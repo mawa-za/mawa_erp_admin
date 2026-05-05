@@ -105,7 +105,21 @@ class MyHomePage extends StatelessWidget {
     
     return Scaffold(
       appBar: AppBar(
-        title: Text(title),
+        title: Row(
+          crossAxisAlignment: CrossAxisAlignment.baseline,
+          textBaseline: TextBaseline.alphabetic,
+          children: [
+            Text(title),
+            const SizedBox(width: 8),
+            Text(
+              'v1.0.0+1',
+              style: theme.textTheme.labelSmall?.copyWith(
+                color: Colors.grey.shade500,
+                fontWeight: FontWeight.normal,
+              ),
+            ),
+          ],
+        ),
         actions: [
           Container(
             margin: const EdgeInsets.only(right: 16),
