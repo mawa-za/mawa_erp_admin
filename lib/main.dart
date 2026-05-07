@@ -33,10 +33,10 @@ class MyApp extends StatelessWidget {
           seedColor: const Color(0xFF1E88E5),
           primary: const Color(0xFF1E88E5),
           secondary: const Color(0xFF26C6DA),
-          surface: const Color(0xFFF8FAFC), // Updated from deprecated 'background'
+          surface: const Color(0xFFF8FAFC),
         ),
         textTheme: GoogleFonts.interTextTheme(Theme.of(context).textTheme),
-        cardTheme: CardThemeData( // Changed from CardTheme (widget) to CardThemeData
+        cardTheme: CardThemeData(
           elevation: 0,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(16),
@@ -112,7 +112,7 @@ class MyHomePage extends StatelessWidget {
             Text(title),
             const SizedBox(width: 8),
             Text(
-              'v1.0.0+1',
+              'v1.0.0+1 (${AppConfig.environment.name})',
               style: theme.textTheme.labelSmall?.copyWith(
                 color: Colors.grey.shade500,
                 fontWeight: FontWeight.normal,
@@ -212,7 +212,7 @@ class MyHomePage extends StatelessWidget {
               Container(
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: color.withValues(alpha: 0.1), // Updated from deprecated 'withOpacity'
+                  color: color.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Icon(icon, color: color, size: 28),
