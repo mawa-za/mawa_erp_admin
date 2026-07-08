@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import '../utils/external_url_opener.dart';
 import '../models/tenant.dart';
 import '../services/tenant_service.dart';
 import '../models/tenant_property.dart';
@@ -50,6 +51,8 @@ class _TenantDetailScreenState extends State<TenantDetailScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               _buildInfoCard(),
+              const SizedBox(height: 24),
+              _buildErpIntegrationCard(),
               const SizedBox(height: 24),
               Card(
                 elevation: 0,
@@ -146,6 +149,177 @@ class _TenantDetailScreenState extends State<TenantDetailScreen> {
         ),
       ),
     );
+  }
+
+  Widget _buildErpIntegrationCard() {
+    return Card(
+      elevation: 0,
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: Colors.deepPurple.shade50,
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Icon(Icons.hub_rounded, color: Colors.deepPurple.shade700),
+            ),
+            const SizedBox(width: 12),
+            const Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'ERP Integration',
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                  ),
+                  SizedBox(height: 2),
+                  Text(
+                    'Sync tenant configuration with mawa-bes or open the tenant ERP using a short-lived support handoff.',
+                    style: TextStyle(color: Colors.grey),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 12),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                OutlinedButton.icon(
+                  onPressed: _showModuleDialog,
+                  icon: const Icon(Icons.extension_rounded, size: 18),
+                  label: const Text('Set Module'),
+                ),
+                OutlinedButton.icon(
+                  onPressed: _syncErpConfiguration,
+                  icon: const Icon(Icons.sync_rounded, size: 18),
+                  label: const Text('Sync ERP'),
+                ),
+                ElevatedButton.icon(
+                  onPressed: _openTenantErp,
+                  icon: const Icon(Icons.open_in_new_rounded, size: 18),
+                  label: const Text('Open ERP'),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showModuleDialog() {
+    final moduleController = TextEditingController();
+    bool enabled = true;
+    bool isSaving = false;
+
+    showDialog(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) {
+          return AlertDialog(
+            title: const Text('Set Tenant Module'),
+            content: SizedBox(
+              width: 420,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  TextField(
+                    controller: moduleController,
+                    decoration: const InputDecoration(
+                      labelText: 'Module Code',
+                      hintText: 'e.g. FUNERAL, MEMBERSHIP, LEGAL_CASE',
+                      border: OutlineInputBorder(),
+                    ),
+                    textCapitalization: TextCapitalization.characters,
+                  ),
+                  const SizedBox(height: 12),
+                  SwitchListTile(
+                    contentPadding: EdgeInsets.zero,
+                    title: Text(enabled ? 'Enabled' : 'Disabled'),
+                    value: enabled,
+                    onChanged: isSaving ? null : (value) => setDialogState(() => enabled = value),
+                  ),
+                ],
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: isSaving ? null : () => Navigator.pop(context),
+                child: const Text('Cancel'),
+              ),
+              ElevatedButton(
+                onPressed: isSaving
+                    ? null
+                    : () async {
+                        final moduleCode = moduleController.text.trim();
+                        if (moduleCode.isEmpty) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(content: Text('Module code is required')),
+                          );
+                          return;
+                        }
+                        setDialogState(() => isSaving = true);
+                        try {
+                          await _tenantService.setTenantModule(widget.tenant.id, moduleCode, enabled);
+                          if (!mounted) return;
+                          Navigator.pop(context);
+                          _refreshProperties();
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(content: Text("$moduleCode ${enabled ? 'enabled' : 'disabled'}")),
+                          );
+                        } catch (e) {
+                          if (!mounted) return;
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(content: Text('Module update failed: $e'), backgroundColor: Colors.red),
+                          );
+                          setDialogState(() => isSaving = false);
+                        }
+                      },
+                child: isSaving
+                    ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))
+                    : const Text('Save'),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+  }
+
+  Future<void> _syncErpConfiguration() async {
+    try {
+      await _tenantService.syncTenantErp(widget.tenant.id);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('ERP configuration sync requested')),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('ERP sync failed: $e'), backgroundColor: Colors.red),
+      );
+    }
+  }
+
+  Future<void> _openTenantErp() async {
+    try {
+      final handoff = await _tenantService.openTenantErp(widget.tenant.id);
+      final launched = await openExternalUrl(handoff.targetUrl);
+      if (!launched && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Could not open ERP URL: ${handoff.targetUrl}')),
+        );
+      }
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Open ERP failed: $e'), backgroundColor: Colors.red),
+      );
+    }
   }
 
   Widget _buildPropertyTile(TenantProperty property) {
