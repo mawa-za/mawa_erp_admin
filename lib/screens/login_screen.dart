@@ -56,7 +56,7 @@ class _LoginScreenState extends State<LoginScreen> {
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
             colors: [
-              theme.colorScheme.primaryContainer.withOpacity(0.3),
+              theme.colorScheme.primaryContainer.withAlpha(76), // v3.18+ recommendation
               theme.colorScheme.surface,
             ],
           ),
@@ -82,13 +82,27 @@ class _LoginScreenState extends State<LoginScreen> {
                         color: theme.colorScheme.primary,
                       ),
                       const SizedBox(height: 16),
-                      Text(
-                        'MAWA ERP',
-                        style: theme.textTheme.headlineMedium?.copyWith(
-                          fontWeight: FontWeight.bold,
-                          color: theme.colorScheme.primary,
-                        ),
-                        textAlign: TextAlign.center,
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        crossAxisAlignment: CrossAxisAlignment.baseline,
+                        textBaseline: TextBaseline.alphabetic,
+                        children: [
+                          Text(
+                            'MAWA ERP',
+                            style: theme.textTheme.headlineMedium?.copyWith(
+                              fontWeight: FontWeight.bold,
+                              color: theme.colorScheme.primary,
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Text(
+                            'v1.0.0+1',
+                            style: theme.textTheme.labelSmall?.copyWith(
+                              color: theme.colorScheme.onSurfaceVariant.withAlpha(128),
+                              fontWeight: FontWeight.normal,
+                            ),
+                          ),
+                        ],
                       ),
                       Text(
                         'Admin Console',
