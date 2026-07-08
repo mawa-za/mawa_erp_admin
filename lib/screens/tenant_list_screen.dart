@@ -115,7 +115,7 @@ class _TenantListScreenState extends State<TenantListScreen> {
                               ),
                               const SizedBox(height: 2),
                               Text(
-                                tenant.host,
+                                [tenant.host, if (tenant.subscriptionPlanCode != null) tenant.subscriptionPlanCode!].join(' • '),
                                 style: TextStyle(color: Colors.grey.shade600, fontSize: 13),
                               ),
                             ],
@@ -209,7 +209,7 @@ class _CreateTenantDialogState extends State<CreateTenantDialog> {
                 const SizedBox(height: 12),
                 _buildTextField(_hostController, 'Host', Icons.language_rounded, required: true),
                 const SizedBox(height: 12),
-                _buildTextField(_urlController, 'URL (Optional)', Icons.link_rounded),
+                _buildTextField(_urlController, 'ERP App URL (Optional)', Icons.link_rounded),
                 const SizedBox(height: 12),
                 DropdownButtonFormField<String>(
                   value: _status,
@@ -217,7 +217,7 @@ class _CreateTenantDialogState extends State<CreateTenantDialog> {
                     labelText: 'Status',
                     prefixIcon: Icon(Icons.info_outline_rounded),
                   ),
-                  items: ['ACTIVE', 'INACTIVE']
+                  items: ['ACTIVE', 'INACTIVE', 'SUSPENDED']
                       .map((s) => DropdownMenuItem(value: s, child: Text(s)))
                       .toList(),
                   onChanged: (v) => setState(() => _status = v!),
@@ -289,6 +289,7 @@ class _CreateTenantDialogState extends State<CreateTenantDialog> {
           name: _nameController.text,
           host: _hostController.text,
           url: _urlController.text.isEmpty ? null : _urlController.text,
+          erpAppUrl: _urlController.text.isEmpty ? null : _urlController.text,
           status: _status,
           databaseUrl: _dbUrlController.text.isEmpty ? null : _dbUrlController.text,
           databaseUsername: _dbUserController.text.isEmpty ? null : _dbUserController.text,
