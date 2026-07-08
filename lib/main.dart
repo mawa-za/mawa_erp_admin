@@ -2,7 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'screens/login_screen.dart';
 import 'screens/tenant_list_screen.dart';
+import 'screens/subscription_plans_screen.dart';
 import 'services/auth_service.dart';
+import 'services/tenant_service.dart';
+import 'models/platform_management.dart';
 import 'config.dart';
 
 void main() async {
@@ -89,6 +92,7 @@ class MyApp extends StatelessWidget {
         '/login': (context) => const LoginScreen(),
         '/home': (context) => const MyHomePage(title: 'MAWA ERP Admin'),
         '/tenant': (context) => const TenantListScreen(),
+        '/subscriptions': (context) => const SubscriptionPlansScreen(),
       },
     );
   }
@@ -102,6 +106,7 @@ class MyHomePage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final tenantService = TenantService();
     
     return Scaffold(
       appBar: AppBar(
@@ -153,6 +158,23 @@ class MyHomePage extends StatelessWidget {
               'Manage your ERP infrastructure from here.',
               style: theme.textTheme.bodyMedium?.copyWith(color: Colors.grey.shade600),
             ),
+            const SizedBox(height: 24),
+            FutureBuilder<AdminDashboardSummary>(
+              future: tenantService.getDashboardSummary(),
+              builder: (context, snapshot) {
+                final summary = snapshot.data;
+                return Wrap(
+                  spacing: 12,
+                  runSpacing: 12,
+                  children: [
+                    _buildSummaryChip('Tenants', summary?.totalTenants.toString() ?? '...', Icons.business_rounded),
+                    _buildSummaryChip('Active', summary?.activeTenants.toString() ?? '...', Icons.check_circle_rounded),
+                    _buildSummaryChip('Suspended', summary?.suspendedTenants.toString() ?? '...', Icons.pause_circle_rounded),
+                    _buildSummaryChip('Subscriptions', summary?.activeSubscriptions.toString() ?? '...', Icons.workspace_premium_rounded),
+                  ],
+                );
+              },
+            ),
             const SizedBox(height: 32),
             GridView.count(
               shrinkWrap: true,
@@ -171,11 +193,11 @@ class MyHomePage extends StatelessWidget {
                 ),
                 _buildMenuCard(
                   context,
-                  title: 'Settings',
-                  subtitle: 'App configuration',
-                  icon: Icons.settings_suggest_rounded,
+                  title: 'Subscriptions',
+                  subtitle: 'Plans and packages',
+                  icon: Icons.workspace_premium_rounded,
                   color: Colors.purple,
-                  onTap: () {},
+                  onTap: () => Navigator.pushNamed(context, '/subscriptions'),
                 ),
                 _buildMenuCard(
                   context,
@@ -189,6 +211,31 @@ class MyHomePage extends StatelessWidget {
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildSummaryChip(String label, String value, IconData icon) {
+    return Container(
+      width: 180,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.grey.shade200),
+      ),
+      child: Row(
+        children: [
+          Icon(icon, color: const Color(0xFF1E88E5)),
+          const SizedBox(width: 12),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(value, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+              Text(label, style: TextStyle(color: Colors.grey.shade600, fontSize: 12)),
+            ],
+          ),
+        ],
       ),
     );
   }

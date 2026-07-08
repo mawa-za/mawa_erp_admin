@@ -1,0 +1,211 @@
+class AdminDashboardSummary {
+  final int totalTenants;
+  final int activeTenants;
+  final int inactiveTenants;
+  final int suspendedTenants;
+  final int activeSubscriptions;
+  final int trialSubscriptions;
+  final int subscriptionPlans;
+
+  AdminDashboardSummary({
+    required this.totalTenants,
+    required this.activeTenants,
+    required this.inactiveTenants,
+    required this.suspendedTenants,
+    required this.activeSubscriptions,
+    required this.trialSubscriptions,
+    required this.subscriptionPlans,
+  });
+
+  factory AdminDashboardSummary.fromJson(Map<String, dynamic> json) {
+    int asInt(dynamic value) => value is int ? value : int.tryParse(value?.toString() ?? '') ?? 0;
+    return AdminDashboardSummary(
+      totalTenants: asInt(json['totalTenants']),
+      activeTenants: asInt(json['activeTenants']),
+      inactiveTenants: asInt(json['inactiveTenants']),
+      suspendedTenants: asInt(json['suspendedTenants']),
+      activeSubscriptions: asInt(json['activeSubscriptions']),
+      trialSubscriptions: asInt(json['trialSubscriptions']),
+      subscriptionPlans: asInt(json['subscriptionPlans']),
+    );
+  }
+}
+
+class SubscriptionPlan {
+  final String code;
+  final String name;
+  final String? description;
+  final String status;
+  final String currency;
+  final int? monthlyPriceCents;
+  final int? annualPriceCents;
+  final int? maxUsers;
+  final int? maxBranches;
+  final int? maxDevices;
+  final int? displayOrder;
+
+  SubscriptionPlan({
+    required this.code,
+    required this.name,
+    this.description,
+    required this.status,
+    required this.currency,
+    this.monthlyPriceCents,
+    this.annualPriceCents,
+    this.maxUsers,
+    this.maxBranches,
+    this.maxDevices,
+    this.displayOrder,
+  });
+
+  factory SubscriptionPlan.fromJson(Map<String, dynamic> json) {
+    int? asNullableInt(dynamic value) => value == null ? null : int.tryParse(value.toString());
+    return SubscriptionPlan(
+      code: json['code'] ?? '',
+      name: json['name'] ?? '',
+      description: json['description'],
+      status: json['status'] ?? 'ACTIVE',
+      currency: json['currency'] ?? 'ZAR',
+      monthlyPriceCents: asNullableInt(json['monthlyPriceCents']),
+      annualPriceCents: asNullableInt(json['annualPriceCents']),
+      maxUsers: asNullableInt(json['maxUsers']),
+      maxBranches: asNullableInt(json['maxBranches']),
+      maxDevices: asNullableInt(json['maxDevices']),
+      displayOrder: asNullableInt(json['displayOrder']),
+    );
+  }
+
+  Map<String, dynamic> toJson() => {
+        'code': code,
+        'name': name,
+        'description': description,
+        'status': status,
+        'currency': currency,
+        'monthlyPriceCents': monthlyPriceCents,
+        'annualPriceCents': annualPriceCents,
+        'maxUsers': maxUsers,
+        'maxBranches': maxBranches,
+        'maxDevices': maxDevices,
+        'displayOrder': displayOrder,
+      };
+}
+
+class TenantSubscription {
+  final String? id;
+  final String? tenantId;
+  final String planCode;
+  final String? planName;
+  final String status;
+  final String billingCycle;
+  final String currency;
+  final int? amountCents;
+  final String? startDate;
+  final String? trialEndsAt;
+  final String? nextBillingDate;
+  final String? endDate;
+  final String? notes;
+
+  TenantSubscription({
+    this.id,
+    this.tenantId,
+    required this.planCode,
+    this.planName,
+    required this.status,
+    required this.billingCycle,
+    required this.currency,
+    this.amountCents,
+    this.startDate,
+    this.trialEndsAt,
+    this.nextBillingDate,
+    this.endDate,
+    this.notes,
+  });
+
+  factory TenantSubscription.fromJson(Map<String, dynamic> json) {
+    int? asNullableInt(dynamic value) => value == null ? null : int.tryParse(value.toString());
+    return TenantSubscription(
+      id: json['id'],
+      tenantId: json['tenantId'],
+      planCode: json['planCode'] ?? '',
+      planName: json['planName'],
+      status: json['status'] ?? 'ACTIVE',
+      billingCycle: json['billingCycle'] ?? 'MONTHLY',
+      currency: json['currency'] ?? 'ZAR',
+      amountCents: asNullableInt(json['amountCents']),
+      startDate: json['startDate'],
+      trialEndsAt: json['trialEndsAt'],
+      nextBillingDate: json['nextBillingDate'],
+      endDate: json['endDate'],
+      notes: json['notes'],
+    );
+  }
+
+  Map<String, dynamic> toJson() => {
+        'id': id,
+        'tenantId': tenantId,
+        'planCode': planCode,
+        'status': status,
+        'billingCycle': billingCycle,
+        'currency': currency,
+        'amountCents': amountCents,
+        'startDate': startDate,
+        'trialEndsAt': trialEndsAt,
+        'nextBillingDate': nextBillingDate,
+        'endDate': endDate,
+        'notes': notes,
+      };
+}
+
+class TenantModule {
+  final String code;
+  final String name;
+  final bool enabled;
+  final String? description;
+
+  TenantModule({
+    required this.code,
+    required this.name,
+    required this.enabled,
+    this.description,
+  });
+
+  factory TenantModule.fromJson(Map<String, dynamic> json) => TenantModule(
+        code: json['code'] ?? '',
+        name: json['name'] ?? json['code'] ?? '',
+        enabled: json['enabled'] == true || json['enabled']?.toString() == 'true',
+        description: json['description'],
+      );
+}
+
+class TenantActivityLog {
+  final String id;
+  final String? tenantId;
+  final String category;
+  final String action;
+  final String message;
+  final String actor;
+  final String? details;
+  final String? createdAt;
+
+  TenantActivityLog({
+    required this.id,
+    this.tenantId,
+    required this.category,
+    required this.action,
+    required this.message,
+    required this.actor,
+    this.details,
+    this.createdAt,
+  });
+
+  factory TenantActivityLog.fromJson(Map<String, dynamic> json) => TenantActivityLog(
+        id: json['id'] ?? '',
+        tenantId: json['tenantId'],
+        category: json['category'] ?? '',
+        action: json['action'] ?? '',
+        message: json['message'] ?? '',
+        actor: json['actor'] ?? '',
+        details: json['details'],
+        createdAt: json['createdAt'],
+      );
+}
