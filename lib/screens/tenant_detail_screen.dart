@@ -22,6 +22,7 @@ class _TenantDetailScreenState extends State<TenantDetailScreen> {
   late Future<List<TenantModule>> _modulesFuture;
   late Future<TenantSubscription?> _subscriptionFuture;
   late Future<List<TenantActivityLog>> _activityFuture;
+  late Future<List<TenantSchedule>> _schedulesFuture;
   late Future<List<SubscriptionPlan>> _plansFuture;
 
   @override
@@ -37,6 +38,7 @@ class _TenantDetailScreenState extends State<TenantDetailScreen> {
       _modulesFuture = _tenantService.getTenantModules(_tenant.id);
       _subscriptionFuture = _tenantService.getTenantSubscription(_tenant.id);
       _activityFuture = _tenantService.getTenantActivity(_tenant.id);
+      _schedulesFuture = _tenantService.getTenantSchedules(_tenant.id);
       _plansFuture = _tenantService.getSubscriptionPlans();
     });
   }
@@ -71,6 +73,8 @@ class _TenantDetailScreenState extends State<TenantDetailScreen> {
               _buildModuleManagementCard(),
               const SizedBox(height: 16),
               _buildErpIntegrationCard(),
+              const SizedBox(height: 16),
+              _buildSchedulingCard(),
               const SizedBox(height: 16),
               _buildSecretManagerCard(),
               const SizedBox(height: 16),
@@ -243,6 +247,7 @@ class _TenantDetailScreenState extends State<TenantDetailScreen> {
                   _modulesFuture = _tenantService.getTenantModules(_tenant.id);
                   _propertiesFuture = _tenantService.getTenantPropertyDetails(_tenant.id);
                   _activityFuture = _tenantService.getTenantActivity(_tenant.id);
+      _schedulesFuture = _tenantService.getTenantSchedules(_tenant.id);
                 });
               } catch (e) {
                 if (!mounted) return;
@@ -286,6 +291,108 @@ class _TenantDetailScreenState extends State<TenantDetailScreen> {
             ),
           ],
         ),
+      ),
+    );
+  }
+
+
+  Widget _buildSchedulingCard() {
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(Icons.schedule_rounded, color: Colors.deepOrange.shade700),
+                const SizedBox(width: 8),
+                const Expanded(child: Text('Tenant Schedules', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold))),
+                IconButton(icon: const Icon(Icons.refresh_rounded), onPressed: _refreshAll),
+              ],
+            ),
+            const Divider(),
+            FutureBuilder<List<TenantSchedule>>(
+              future: _schedulesFuture,
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return const LinearProgressIndicator();
+                }
+                if (snapshot.hasError) {
+                  return Text('Failed to load schedules: ${snapshot.error}', style: const TextStyle(color: Colors.red));
+                }
+                final schedules = snapshot.data ?? [];
+                if (schedules.isEmpty) {
+                  return const Text('No scheduled jobs configured for this tenant.');
+                }
+                return Column(children: schedules.map(_buildScheduleTile).toList());
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildScheduleTile(TenantSchedule schedule) {
+    final intervalController = TextEditingController(text: schedule.intervalMinutes.toString());
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.grey.shade200),
+        color: schedule.enabled ? Colors.green.shade50 : Colors.grey.shade50,
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(schedule.name, style: const TextStyle(fontWeight: FontWeight.bold)),
+                    Text(schedule.description, style: TextStyle(fontSize: 12, color: Colors.grey.shade700)),
+                  ],
+                ),
+              ),
+              Switch(
+                value: schedule.enabled,
+                onChanged: (value) => _saveSchedule(schedule.copyWith(enabled: value)),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Wrap(
+            spacing: 12,
+            runSpacing: 12,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            children: [
+              SizedBox(
+                width: 180,
+                child: TextFormField(
+                  controller: intervalController,
+                  decoration: const InputDecoration(labelText: 'Interval minutes', border: OutlineInputBorder()),
+                  keyboardType: TextInputType.number,
+                ),
+              ),
+              OutlinedButton.icon(
+                onPressed: () => _saveSchedule(schedule.copyWith(intervalMinutes: int.tryParse(intervalController.text) ?? schedule.intervalMinutes)),
+                icon: const Icon(Icons.save_outlined, size: 18),
+                label: const Text('Save'),
+              ),
+              OutlinedButton.icon(
+                onPressed: () => _runScheduleNow(schedule),
+                icon: const Icon(Icons.play_arrow_rounded, size: 18),
+                label: const Text('Run now'),
+              ),
+              Text('Last: ${schedule.lastRunAt ?? 'Never'}', style: TextStyle(color: Colors.grey.shade700)),
+              Text('Next: ${schedule.nextRunAt ?? 'Stopped'}', style: TextStyle(color: Colors.grey.shade700)),
+            ],
+          ),
+        ],
       ),
     );
   }
@@ -746,6 +853,31 @@ class _TenantDetailScreenState extends State<TenantDetailScreen> {
         ),
       ),
     );
+  }
+
+
+  Future<void> _saveSchedule(TenantSchedule schedule) async {
+    try {
+      await _tenantService.saveTenantSchedule(_tenant.id, schedule);
+      if (!mounted) return;
+      _refreshAll();
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Schedule updated')));
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Schedule update failed: $e'), backgroundColor: Colors.red));
+    }
+  }
+
+  Future<void> _runScheduleNow(TenantSchedule schedule) async {
+    try {
+      await _tenantService.runTenantScheduleNow(_tenant.id, schedule.jobCode);
+      if (!mounted) return;
+      _refreshAll();
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Scheduled job triggered')));
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Run failed: $e'), backgroundColor: Colors.red));
+    }
   }
 
   Future<void> _syncErpConfiguration() async {
