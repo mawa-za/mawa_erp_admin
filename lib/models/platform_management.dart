@@ -209,3 +209,54 @@ class TenantActivityLog {
         createdAt: json['createdAt'],
       );
 }
+
+
+class TenantSchedule {
+  final String jobCode;
+  final String name;
+  final String description;
+  final bool enabled;
+  final int intervalMinutes;
+  final String? lastRunAt;
+  final String? nextRunAt;
+
+  TenantSchedule({
+    required this.jobCode,
+    required this.name,
+    required this.description,
+    required this.enabled,
+    required this.intervalMinutes,
+    this.lastRunAt,
+    this.nextRunAt,
+  });
+
+  factory TenantSchedule.fromJson(Map<String, dynamic> json) => TenantSchedule(
+        jobCode: json['jobCode'] ?? '',
+        name: json['name'] ?? json['jobCode'] ?? '',
+        description: json['description'] ?? '',
+        enabled: json['enabled'] == true || json['enabled']?.toString() == 'true',
+        intervalMinutes: int.tryParse('${json['intervalMinutes'] ?? 5}') ?? 5,
+        lastRunAt: json['lastRunAt'],
+        nextRunAt: json['nextRunAt'],
+      );
+
+  Map<String, dynamic> toJson() => {
+        'jobCode': jobCode,
+        'name': name,
+        'description': description,
+        'enabled': enabled,
+        'intervalMinutes': intervalMinutes,
+        'lastRunAt': lastRunAt,
+        'nextRunAt': nextRunAt,
+      };
+
+  TenantSchedule copyWith({bool? enabled, int? intervalMinutes}) => TenantSchedule(
+        jobCode: jobCode,
+        name: name,
+        description: description,
+        enabled: enabled ?? this.enabled,
+        intervalMinutes: intervalMinutes ?? this.intervalMinutes,
+        lastRunAt: lastRunAt,
+        nextRunAt: nextRunAt,
+      );
+}

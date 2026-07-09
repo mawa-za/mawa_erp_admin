@@ -263,4 +263,42 @@ class TenantService {
     throw Exception(response.body.isNotEmpty ? response.body : 'Failed to load tenant activity');
   }
 
+  Future<List<TenantSchedule>> getTenantSchedules(String tenantId) async {
+    final response = await http.get(
+      Uri.parse('${AppConfig.apiBaseUrl}/tenant/$tenantId/schedules'),
+      headers: await _getHeaders(),
+    );
+
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body) as List<dynamic>;
+      return data.map((json) => TenantSchedule.fromJson(json as Map<String, dynamic>)).toList();
+    }
+    throw Exception(response.body.isNotEmpty ? response.body : 'Failed to load tenant schedules');
+  }
+
+  Future<TenantSchedule> saveTenantSchedule(String tenantId, TenantSchedule schedule) async {
+    final response = await http.put(
+      Uri.parse('${AppConfig.apiBaseUrl}/tenant/$tenantId/schedules/${schedule.jobCode}'),
+      headers: await _getHeaders(),
+      body: jsonEncode(schedule.toJson()),
+    );
+
+    if (response.statusCode == 200) {
+      return TenantSchedule.fromJson(jsonDecode(response.body) as Map<String, dynamic>);
+    }
+    throw Exception(response.body.isNotEmpty ? response.body : 'Failed to save tenant schedule');
+  }
+
+  Future<TenantSchedule> runTenantScheduleNow(String tenantId, String jobCode) async {
+    final response = await http.post(
+      Uri.parse('${AppConfig.apiBaseUrl}/tenant/$tenantId/schedules/$jobCode/run-now'),
+      headers: await _getHeaders(),
+    );
+
+    if (response.statusCode == 200) {
+      return TenantSchedule.fromJson(jsonDecode(response.body) as Map<String, dynamic>);
+    }
+    throw Exception(response.body.isNotEmpty ? response.body : 'Failed to run tenant schedule');
+  }
+
 }
