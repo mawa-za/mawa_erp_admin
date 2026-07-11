@@ -1,14 +1,15 @@
 import 'dart:convert';
-import 'package:http/http.dart' as http;
 import '../config.dart';
 import '../models/tenant.dart';
 import '../models/tenant_property.dart';
 import '../models/erp_handoff.dart';
 import '../models/platform_management.dart';
 import 'auth_service.dart';
+import 'authenticated_http_client.dart';
 
 class TenantService {
   final AuthService _authService = AuthService();
+  final AuthenticatedHttpClient _client = AuthenticatedHttpClient();
 
   Future<Map<String, String>> _getHeaders() async {
     final token = await _authService.getToken();
@@ -19,7 +20,7 @@ class TenantService {
   }
 
   Future<List<Tenant>> getTenants() async {
-    final response = await http.get(
+    final response = await _client.get(
       Uri.parse('${AppConfig.apiBaseUrl}/tenant'),
       headers: await _getHeaders(),
     );
@@ -33,7 +34,7 @@ class TenantService {
   }
 
   Future<Tenant> createTenant(CreateTenantRequest request) async {
-    final response = await http.post(
+    final response = await _client.post(
       Uri.parse('${AppConfig.apiBaseUrl}/tenant'),
       headers: await _getHeaders(),
       body: jsonEncode(request.toJson()),
@@ -59,7 +60,7 @@ class TenantService {
   }
 
   Future<Map<String, String>> getTenantProperties(String tenantId) async {
-    final response = await http.get(
+    final response = await _client.get(
       Uri.parse('${AppConfig.apiBaseUrl}/tenant/$tenantId/property'),
       headers: await _getHeaders(),
     );
@@ -73,7 +74,7 @@ class TenantService {
   }
 
   Future<List<TenantProperty>> getTenantPropertyDetails(String tenantId) async {
-    final response = await http.get(
+    final response = await _client.get(
       Uri.parse('${AppConfig.apiBaseUrl}/tenant/$tenantId/property-details'),
       headers: await _getHeaders(),
     );
@@ -87,7 +88,7 @@ class TenantService {
   }
 
   Future<void> addTenantProperty(TenantPropertyRequest request) async {
-    final response = await http.post(
+    final response = await _client.post(
       Uri.parse('${AppConfig.apiBaseUrl}/tenant/${request.tenant}/property'),
       headers: await _getHeaders(),
       body: jsonEncode(request.toJson()),
@@ -99,7 +100,7 @@ class TenantService {
   }
 
   Future<void> syncTenantErp(String tenantId) async {
-    final response = await http.post(
+    final response = await _client.post(
       Uri.parse('${AppConfig.apiBaseUrl}/tenant/$tenantId/sync-erp'),
       headers: await _getHeaders(),
     );
@@ -110,7 +111,7 @@ class TenantService {
   }
 
   Future<void> syncTenantModules(String tenantId) async {
-    final response = await http.post(
+    final response = await _client.post(
       Uri.parse('${AppConfig.apiBaseUrl}/tenant/$tenantId/modules/sync'),
       headers: await _getHeaders(),
     );
@@ -122,7 +123,7 @@ class TenantService {
 
   Future<void> setTenantModule(String tenantId, String moduleCode, bool enabled) async {
     final action = enabled ? 'enable' : 'disable';
-    final response = await http.post(
+    final response = await _client.post(
       Uri.parse('${AppConfig.apiBaseUrl}/tenant/$tenantId/modules/$moduleCode/$action'),
       headers: await _getHeaders(),
     );
@@ -133,7 +134,7 @@ class TenantService {
   }
 
   Future<ErpHandoff> openTenantErp(String tenantId, {String redirectPath = '/home'}) async {
-    final response = await http.post(
+    final response = await _client.post(
       Uri.parse('${AppConfig.apiBaseUrl}/tenant/$tenantId/open-erp'),
       headers: await _getHeaders(),
       body: jsonEncode({'redirectPath': redirectPath}),
@@ -147,7 +148,7 @@ class TenantService {
   }
 
   Future<AdminDashboardSummary> getDashboardSummary() async {
-    final response = await http.get(
+    final response = await _client.get(
       Uri.parse('${AppConfig.apiBaseUrl}/admin-dashboard/summary'),
       headers: await _getHeaders(),
     );
@@ -159,7 +160,7 @@ class TenantService {
   }
 
   Future<Tenant> updateTenant(String tenantId, Tenant tenant) async {
-    final response = await http.put(
+    final response = await _client.put(
       Uri.parse('${AppConfig.apiBaseUrl}/tenant/$tenantId'),
       headers: await _getHeaders(),
       body: jsonEncode(tenant.toJson()),
@@ -172,7 +173,7 @@ class TenantService {
   }
 
   Future<Tenant> updateTenantStatus(String tenantId, String status, {String? reason}) async {
-    final response = await http.put(
+    final response = await _client.put(
       Uri.parse('${AppConfig.apiBaseUrl}/tenant/$tenantId/status'),
       headers: await _getHeaders(),
       body: jsonEncode({'status': status, 'reason': reason}),
@@ -185,7 +186,7 @@ class TenantService {
   }
 
   Future<List<SubscriptionPlan>> getSubscriptionPlans() async {
-    final response = await http.get(
+    final response = await _client.get(
       Uri.parse('${AppConfig.apiBaseUrl}/subscription/plans'),
       headers: await _getHeaders(),
     );
@@ -202,8 +203,8 @@ class TenantService {
         ? Uri.parse('${AppConfig.apiBaseUrl}/subscription/plans')
         : Uri.parse('${AppConfig.apiBaseUrl}/subscription/plans/${plan.code}');
     final response = plan.code.isEmpty
-        ? await http.post(uri, headers: await _getHeaders(), body: jsonEncode(plan.toJson()))
-        : await http.put(uri, headers: await _getHeaders(), body: jsonEncode(plan.toJson()));
+        ? await _client.post(uri, headers: await _getHeaders(), body: jsonEncode(plan.toJson()))
+        : await _client.put(uri, headers: await _getHeaders(), body: jsonEncode(plan.toJson()));
 
     if (response.statusCode == 200 || response.statusCode == 201) {
       return SubscriptionPlan.fromJson(jsonDecode(response.body));
@@ -212,7 +213,7 @@ class TenantService {
   }
 
   Future<TenantSubscription?> getTenantSubscription(String tenantId) async {
-    final response = await http.get(
+    final response = await _client.get(
       Uri.parse('${AppConfig.apiBaseUrl}/tenant/$tenantId/subscription'),
       headers: await _getHeaders(),
     );
@@ -225,7 +226,7 @@ class TenantService {
   }
 
   Future<TenantSubscription> saveTenantSubscription(String tenantId, TenantSubscription subscription) async {
-    final response = await http.put(
+    final response = await _client.put(
       Uri.parse('${AppConfig.apiBaseUrl}/tenant/$tenantId/subscription'),
       headers: await _getHeaders(),
       body: jsonEncode(subscription.toJson()),
@@ -238,7 +239,7 @@ class TenantService {
   }
 
   Future<List<TenantModule>> getTenantModules(String tenantId) async {
-    final response = await http.get(
+    final response = await _client.get(
       Uri.parse('${AppConfig.apiBaseUrl}/tenant/$tenantId/modules'),
       headers: await _getHeaders(),
     );
@@ -251,7 +252,7 @@ class TenantService {
   }
 
   Future<List<TenantActivityLog>> getTenantActivity(String tenantId) async {
-    final response = await http.get(
+    final response = await _client.get(
       Uri.parse('${AppConfig.apiBaseUrl}/tenant/$tenantId/activity'),
       headers: await _getHeaders(),
     );
@@ -264,7 +265,7 @@ class TenantService {
   }
 
   Future<List<TenantSchedule>> getTenantSchedules(String tenantId) async {
-    final response = await http.get(
+    final response = await _client.get(
       Uri.parse('${AppConfig.apiBaseUrl}/tenant/$tenantId/schedules'),
       headers: await _getHeaders(),
     );
@@ -277,7 +278,7 @@ class TenantService {
   }
 
   Future<TenantSchedule> saveTenantSchedule(String tenantId, TenantSchedule schedule) async {
-    final response = await http.put(
+    final response = await _client.put(
       Uri.parse('${AppConfig.apiBaseUrl}/tenant/$tenantId/schedules/${schedule.jobCode}'),
       headers: await _getHeaders(),
       body: jsonEncode(schedule.toJson()),
@@ -290,7 +291,7 @@ class TenantService {
   }
 
   Future<TenantSchedule> runTenantScheduleNow(String tenantId, String jobCode) async {
-    final response = await http.post(
+    final response = await _client.post(
       Uri.parse('${AppConfig.apiBaseUrl}/tenant/$tenantId/schedules/$jobCode/run-now'),
       headers: await _getHeaders(),
     );
