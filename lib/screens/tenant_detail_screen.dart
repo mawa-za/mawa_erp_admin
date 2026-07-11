@@ -358,13 +358,10 @@ class _TenantDetailScreenState extends State<TenantDetailScreen> {
                   ],
                 ),
               ),
-              if (!schedule.manualOnly)
-                Switch(
-                  value: schedule.enabled,
-                  onChanged: (value) => _saveSchedule(schedule.copyWith(enabled: value)),
-                )
-              else
-                const Chip(label: Text('Once off')),
+              Switch(
+                value: schedule.enabled,
+                onChanged: (value) => _saveSchedule(schedule.copyWith(enabled: value)),
+              ),
             ],
           ),
           const SizedBox(height: 8),
@@ -373,30 +370,26 @@ class _TenantDetailScreenState extends State<TenantDetailScreen> {
             runSpacing: 12,
             crossAxisAlignment: WrapCrossAlignment.center,
             children: [
-              if (!schedule.manualOnly) ...[
-                SizedBox(
-                  width: 180,
-                  child: TextFormField(
-                    controller: intervalController,
-                    decoration: const InputDecoration(labelText: 'Interval minutes', border: OutlineInputBorder()),
-                    keyboardType: TextInputType.number,
-                  ),
+              SizedBox(
+                width: 180,
+                child: TextFormField(
+                  controller: intervalController,
+                  decoration: const InputDecoration(labelText: 'Interval minutes', border: OutlineInputBorder()),
+                  keyboardType: TextInputType.number,
                 ),
-                OutlinedButton.icon(
-                  onPressed: () => _saveSchedule(schedule.copyWith(intervalMinutes: int.tryParse(intervalController.text) ?? schedule.intervalMinutes)),
-                  icon: const Icon(Icons.save_outlined, size: 18),
-                  label: const Text('Save'),
-                ),
-              ],
+              ),
+              OutlinedButton.icon(
+                onPressed: () => _saveSchedule(schedule.copyWith(intervalMinutes: int.tryParse(intervalController.text) ?? schedule.intervalMinutes)),
+                icon: const Icon(Icons.save_outlined, size: 18),
+                label: const Text('Save'),
+              ),
               OutlinedButton.icon(
                 onPressed: () => _runScheduleNow(schedule),
                 icon: const Icon(Icons.play_arrow_rounded, size: 18),
-                label: Text(schedule.manualOnly ? 'Run once' : 'Run now'),
+                label: const Text('Run now'),
               ),
               Text('Last: ${schedule.lastRunAt ?? 'Never'}', style: TextStyle(color: Colors.grey.shade700)),
-              if (!schedule.manualOnly) Text('Next: ${schedule.nextRunAt ?? 'Stopped'}', style: TextStyle(color: Colors.grey.shade700)),
-              if (schedule.lastRunResult != null && schedule.lastRunResult!.isNotEmpty)
-                Text('Result: ${schedule.lastRunResult}', style: TextStyle(color: Colors.grey.shade700)),
+              Text('Next: ${schedule.nextRunAt ?? 'Stopped'}', style: TextStyle(color: Colors.grey.shade700)),
             ],
           ),
         ],
@@ -880,7 +873,7 @@ class _TenantDetailScreenState extends State<TenantDetailScreen> {
       await _tenantService.runTenantScheduleNow(_tenant.id, schedule.jobCode);
       if (!mounted) return;
       _refreshAll();
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(schedule.manualOnly ? 'Once-off migration completed' : 'Scheduled job triggered')));
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Scheduled job triggered')));
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Run failed: $e'), backgroundColor: Colors.red));
