@@ -219,8 +219,6 @@ class TenantSchedule {
   final int intervalMinutes;
   final String? lastRunAt;
   final String? nextRunAt;
-  final bool manualOnly;
-  final String? lastRunResult;
 
   TenantSchedule({
     required this.jobCode,
@@ -230,8 +228,6 @@ class TenantSchedule {
     required this.intervalMinutes,
     this.lastRunAt,
     this.nextRunAt,
-    this.manualOnly = false,
-    this.lastRunResult,
   });
 
   factory TenantSchedule.fromJson(Map<String, dynamic> json) => TenantSchedule(
@@ -242,8 +238,6 @@ class TenantSchedule {
         intervalMinutes: int.tryParse('${json['intervalMinutes'] ?? 5}') ?? 5,
         lastRunAt: json['lastRunAt'],
         nextRunAt: json['nextRunAt'],
-        manualOnly: json['manualOnly'] == true || json['manualOnly']?.toString() == 'true',
-        lastRunResult: json['lastRunResult'],
       );
 
   Map<String, dynamic> toJson() => {
@@ -254,8 +248,6 @@ class TenantSchedule {
         'intervalMinutes': intervalMinutes,
         'lastRunAt': lastRunAt,
         'nextRunAt': nextRunAt,
-        'manualOnly': manualOnly,
-        'lastRunResult': lastRunResult,
       };
 
   TenantSchedule copyWith({bool? enabled, int? intervalMinutes}) => TenantSchedule(
@@ -266,7 +258,5 @@ class TenantSchedule {
         intervalMinutes: intervalMinutes ?? this.intervalMinutes,
         lastRunAt: lastRunAt,
         nextRunAt: nextRunAt,
-        manualOnly: manualOnly,
-        lastRunResult: lastRunResult,
       );
 }

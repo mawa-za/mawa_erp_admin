@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import '../services/auth_service.dart';
-import '../widgets/mawa_brand.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -77,18 +76,26 @@ class _LoginScreenState extends State<LoginScreen> {
                     mainAxisSize: MainAxisSize.min,
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      const MawaBrand(height: 64),
-                      const SizedBox(height: 18),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Text('Admin Console', style: theme.textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w700)),
-                          const SizedBox(width: 8),
-                          Text('v1.0.0+1', style: theme.textTheme.labelSmall?.copyWith(color: theme.colorScheme.onSurfaceVariant)),
-                        ],
+                      Image.asset(
+                        'assets/branding/mawa_logo.png',
+                        height: 64,
+                        fit: BoxFit.contain,
                       ),
-                      const SizedBox(height: 6),
-                      Text('Manage the MAWA platform securely', textAlign: TextAlign.center, style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.onSurfaceVariant)),
+                      const SizedBox(height: 10),
+                      Text(
+                        'v1.0.0+1',
+                        textAlign: TextAlign.center,
+                        style: theme.textTheme.labelSmall?.copyWith(
+                          color: theme.colorScheme.onSurfaceVariant.withAlpha(128),
+                        ),
+                      ),
+                      Text(
+                        'Admin Console',
+                        style: theme.textTheme.bodyLarge?.copyWith(
+                          color: theme.colorScheme.onSurfaceVariant,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
                       const SizedBox(height: 32),
                       TextFormField(
                         controller: _usernameController,
