@@ -7,6 +7,7 @@ import 'services/auth_service.dart';
 import 'services/tenant_service.dart';
 import 'models/platform_management.dart';
 import 'config.dart';
+import 'widgets/mawa_brand.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -33,9 +34,9 @@ class MyApp extends StatelessWidget {
       theme: ThemeData(
         useMaterial3: true,
         colorScheme: ColorScheme.fromSeed(
-          seedColor: const Color(0xFF1E88E5),
-          primary: const Color(0xFF1E88E5),
-          secondary: const Color(0xFF26C6DA),
+          seedColor: const Color(0xFFDC1E35),
+          primary: const Color(0xFFDC1E35),
+          secondary: const Color(0xFF7A7A7A),
           surface: const Color(0xFFF8FAFC),
         ),
         textTheme: GoogleFonts.interTextTheme(Theme.of(context).textTheme),
@@ -72,7 +73,7 @@ class MyApp extends StatelessWidget {
           ),
           focusedBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(12),
-            borderSide: const BorderSide(color: Color(0xFF1E88E5), width: 1),
+            borderSide: const BorderSide(color: Color(0xFFDC1E35), width: 1),
           ),
           labelStyle: const TextStyle(color: Color(0xFF64748B)),
         ),
@@ -81,7 +82,7 @@ class MyApp extends StatelessWidget {
             elevation: 0,
             padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-            backgroundColor: const Color(0xFF1E88E5),
+            backgroundColor: const Color(0xFFDC1E35),
             foregroundColor: Colors.white,
             textStyle: const TextStyle(fontWeight: FontWeight.bold),
           ),
@@ -111,9 +112,9 @@ class MyHomePage extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(
         title: Row(
-          crossAxisAlignment: CrossAxisAlignment.baseline,
-          textBaseline: TextBaseline.alphabetic,
           children: [
+            const MawaBrand(height: 28),
+            const SizedBox(width: 12),
             Text(title),
             const SizedBox(width: 8),
             Text(
@@ -188,7 +189,7 @@ class MyHomePage extends StatelessWidget {
                   title: 'Tenants',
                   subtitle: 'Manage instances',
                   icon: Icons.business_rounded,
-                  color: const Color(0xFF1E88E5),
+                  color: const Color(0xFFDC1E35),
                   onTap: () => Navigator.pushNamed(context, '/tenant'),
                 ),
                 _buildMenuCard(
@@ -226,7 +227,7 @@ class MyHomePage extends StatelessWidget {
       ),
       child: Row(
         children: [
-          Icon(icon, color: const Color(0xFF1E88E5)),
+          Icon(icon, color: const Color(0xFFDC1E35)),
           const SizedBox(width: 12),
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
