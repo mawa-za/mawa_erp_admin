@@ -2,7 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'screens/login_screen.dart';
 import 'screens/tenant_list_screen.dart';
+import 'screens/subscription_plans_screen.dart';
 import 'services/auth_service.dart';
+import 'services/tenant_service.dart';
+import 'models/platform_management.dart';
 import 'config.dart';
 
 void main() async {
@@ -25,7 +28,7 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'MAWA ERP Admin',
+      title: 'mawa Admin',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
         useMaterial3: true,
@@ -33,10 +36,10 @@ class MyApp extends StatelessWidget {
           seedColor: const Color(0xFF1E88E5),
           primary: const Color(0xFF1E88E5),
           secondary: const Color(0xFF26C6DA),
-          surface: const Color(0xFFF8FAFC), // Updated from deprecated 'background'
+          surface: const Color(0xFFF8FAFC),
         ),
         textTheme: GoogleFonts.interTextTheme(Theme.of(context).textTheme),
-        cardTheme: CardThemeData( // Changed from CardTheme (widget) to CardThemeData
+        cardTheme: CardThemeData(
           elevation: 0,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(16),
@@ -87,8 +90,9 @@ class MyApp extends StatelessWidget {
       initialRoute: initialRoute,
       routes: {
         '/login': (context) => const LoginScreen(),
-        '/home': (context) => const MyHomePage(title: 'MAWA ERP Admin'),
+        '/home': (context) => const MyHomePage(title: 'mawa Admin'),
         '/tenant': (context) => const TenantListScreen(),
+        '/subscriptions': (context) => const SubscriptionPlansScreen(),
       },
     );
   }
@@ -102,10 +106,25 @@ class MyHomePage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final tenantService = TenantService();
     
     return Scaffold(
       appBar: AppBar(
-        title: Text(title),
+        title: Row(
+          crossAxisAlignment: CrossAxisAlignment.baseline,
+          textBaseline: TextBaseline.alphabetic,
+          children: [
+            Text(title),
+            const SizedBox(width: 8),
+            Text(
+              'v1.0.0+1 (${AppConfig.environment.name})',
+              style: theme.textTheme.labelSmall?.copyWith(
+                color: Colors.grey.shade500,
+                fontWeight: FontWeight.normal,
+              ),
+            ),
+          ],
+        ),
         actions: [
           Container(
             margin: const EdgeInsets.only(right: 16),
@@ -139,6 +158,23 @@ class MyHomePage extends StatelessWidget {
               'Manage your ERP infrastructure from here.',
               style: theme.textTheme.bodyMedium?.copyWith(color: Colors.grey.shade600),
             ),
+            const SizedBox(height: 24),
+            FutureBuilder<AdminDashboardSummary>(
+              future: tenantService.getDashboardSummary(),
+              builder: (context, snapshot) {
+                final summary = snapshot.data;
+                return Wrap(
+                  spacing: 12,
+                  runSpacing: 12,
+                  children: [
+                    _buildSummaryChip('Tenants', summary?.totalTenants.toString() ?? '...', Icons.business_rounded),
+                    _buildSummaryChip('Active', summary?.activeTenants.toString() ?? '...', Icons.check_circle_rounded),
+                    _buildSummaryChip('Suspended', summary?.suspendedTenants.toString() ?? '...', Icons.pause_circle_rounded),
+                    _buildSummaryChip('Subscriptions', summary?.activeSubscriptions.toString() ?? '...', Icons.workspace_premium_rounded),
+                  ],
+                );
+              },
+            ),
             const SizedBox(height: 32),
             GridView.count(
               shrinkWrap: true,
@@ -157,11 +193,11 @@ class MyHomePage extends StatelessWidget {
                 ),
                 _buildMenuCard(
                   context,
-                  title: 'Settings',
-                  subtitle: 'App configuration',
-                  icon: Icons.settings_suggest_rounded,
+                  title: 'Subscriptions',
+                  subtitle: 'Plans and packages',
+                  icon: Icons.workspace_premium_rounded,
                   color: Colors.purple,
-                  onTap: () {},
+                  onTap: () => Navigator.pushNamed(context, '/subscriptions'),
                 ),
                 _buildMenuCard(
                   context,
@@ -175,6 +211,31 @@ class MyHomePage extends StatelessWidget {
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildSummaryChip(String label, String value, IconData icon) {
+    return Container(
+      width: 180,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.grey.shade200),
+      ),
+      child: Row(
+        children: [
+          Icon(icon, color: const Color(0xFF1E88E5)),
+          const SizedBox(width: 12),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(value, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+              Text(label, style: TextStyle(color: Colors.grey.shade600, fontSize: 12)),
+            ],
+          ),
+        ],
       ),
     );
   }
@@ -198,7 +259,7 @@ class MyHomePage extends StatelessWidget {
               Container(
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: color.withValues(alpha: 0.1), // Updated from deprecated 'withOpacity'
+                  color: color.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Icon(icon, color: color, size: 28),

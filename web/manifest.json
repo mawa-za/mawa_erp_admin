@@ -1,11 +1,11 @@
 {
-    "name": "mawa_erp_admin",
-    "short_name": "mawa_erp_admin",
+    "name": "mawa-admin",
+    "short_name": "mawa-admin",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#0175C2",
     "theme_color": "#0175C2",
-    "description": "MAWA ERP Admin Console",
+    "description": "mawa Admin Console",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [

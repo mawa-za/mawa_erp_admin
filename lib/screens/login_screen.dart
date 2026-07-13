@@ -56,7 +56,7 @@ class _LoginScreenState extends State<LoginScreen> {
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
             colors: [
-              theme.colorScheme.primaryContainer.withOpacity(0.3),
+              theme.colorScheme.primaryContainer.withAlpha(76), // v3.18+ recommendation
               theme.colorScheme.surface,
             ],
           ),
@@ -76,19 +76,18 @@ class _LoginScreenState extends State<LoginScreen> {
                     mainAxisSize: MainAxisSize.min,
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      Icon(
-                        Icons.admin_panel_settings_rounded,
-                        size: 64,
-                        color: theme.colorScheme.primary,
+                      Image.asset(
+                        'assets/branding/mawa_logo.png',
+                        height: 64,
+                        fit: BoxFit.contain,
                       ),
-                      const SizedBox(height: 16),
+                      const SizedBox(height: 10),
                       Text(
-                        'MAWA ERP',
-                        style: theme.textTheme.headlineMedium?.copyWith(
-                          fontWeight: FontWeight.bold,
-                          color: theme.colorScheme.primary,
-                        ),
+                        'v1.0.0+1',
                         textAlign: TextAlign.center,
+                        style: theme.textTheme.labelSmall?.copyWith(
+                          color: theme.colorScheme.onSurfaceVariant.withAlpha(128),
+                        ),
                       ),
                       Text(
                         'Admin Console',
