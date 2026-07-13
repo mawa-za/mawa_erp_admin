@@ -335,14 +335,19 @@ class _TenantDetailScreenState extends State<TenantDetailScreen> {
   }
 
   Widget _buildScheduleTile(TenantSchedule schedule) {
-    final intervalController = TextEditingController(text: schedule.intervalMinutes.toString());
+    final intervalController = TextEditingController(
+      text: schedule.intervalMinutes.toString(),
+    );
+    final manual = schedule.manualOnly;
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: Colors.grey.shade200),
-        color: schedule.enabled ? Colors.green.shade50 : Colors.grey.shade50,
+        color: manual
+            ? Colors.blue.shade50
+            : (schedule.enabled ? Colors.green.shade50 : Colors.grey.shade50),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -353,43 +358,109 @@ class _TenantDetailScreenState extends State<TenantDetailScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(schedule.name, style: const TextStyle(fontWeight: FontWeight.bold)),
-                    Text(schedule.description, style: TextStyle(fontSize: 12, color: Colors.grey.shade700)),
+                    Row(
+                      children: [
+                        Flexible(
+                          child: Text(
+                            schedule.name,
+                            style: const TextStyle(fontWeight: FontWeight.bold),
+                          ),
+                        ),
+                        if (manual) ...[
+                          const SizedBox(width: 8),
+                          const Chip(
+                            visualDensity: VisualDensity.compact,
+                            label: Text('ONCE-OFF'),
+                          ),
+                        ],
+                      ],
+                    ),
+                    Text(
+                      schedule.description,
+                      style: TextStyle(fontSize: 12, color: Colors.grey.shade700),
+                    ),
                   ],
                 ),
               ),
-              Switch(
-                value: schedule.enabled,
-                onChanged: (value) => _saveSchedule(schedule.copyWith(enabled: value)),
-              ),
+              if (!manual)
+                Switch(
+                  value: schedule.enabled,
+                  onChanged: (value) =>
+                      _saveSchedule(schedule.copyWith(enabled: value)),
+                ),
             ],
           ),
           const SizedBox(height: 8),
-          Wrap(
-            spacing: 12,
-            runSpacing: 12,
-            crossAxisAlignment: WrapCrossAlignment.center,
-            children: [
-              SizedBox(
-                width: 180,
-                child: TextFormField(
-                  controller: intervalController,
-                  decoration: const InputDecoration(labelText: 'Interval minutes', border: OutlineInputBorder()),
-                  keyboardType: TextInputType.number,
+          if (manual)
+            Wrap(
+              spacing: 12,
+              runSpacing: 8,
+              crossAxisAlignment: WrapCrossAlignment.center,
+              children: [
+                FilledButton.icon(
+                  onPressed: () => _runScheduleNow(schedule),
+                  icon: const Icon(Icons.cloud_upload_outlined, size: 18),
+                  label: const Text('Run once'),
                 ),
+                Text(
+                  'Requires MAWA_ATTACHMENT_BUCKET and GCS write permission.',
+                  style: TextStyle(color: Colors.grey.shade700, fontSize: 12),
+                ),
+              ],
+            )
+          else
+            Wrap(
+              spacing: 12,
+              runSpacing: 12,
+              crossAxisAlignment: WrapCrossAlignment.center,
+              children: [
+                SizedBox(
+                  width: 180,
+                  child: TextFormField(
+                    controller: intervalController,
+                    decoration: const InputDecoration(
+                      labelText: 'Interval minutes',
+                      border: OutlineInputBorder(),
+                    ),
+                    keyboardType: TextInputType.number,
+                  ),
+                ),
+                OutlinedButton.icon(
+                  onPressed: () => _saveSchedule(
+                    schedule.copyWith(
+                      intervalMinutes: int.tryParse(intervalController.text) ??
+                          schedule.intervalMinutes,
+                    ),
+                  ),
+                  icon: const Icon(Icons.save_outlined, size: 18),
+                  label: const Text('Save'),
+                ),
+                OutlinedButton.icon(
+                  onPressed: () => _runScheduleNow(schedule),
+                  icon: const Icon(Icons.play_arrow_rounded, size: 18),
+                  label: const Text('Run now'),
+                ),
+              ],
+            ),
+          const SizedBox(height: 8),
+          Wrap(
+            spacing: 16,
+            runSpacing: 4,
+            children: [
+              Text(
+                'Last: ${schedule.lastRunAt ?? 'Never'}',
+                style: TextStyle(color: Colors.grey.shade700),
               ),
-              OutlinedButton.icon(
-                onPressed: () => _saveSchedule(schedule.copyWith(intervalMinutes: int.tryParse(intervalController.text) ?? schedule.intervalMinutes)),
-                icon: const Icon(Icons.save_outlined, size: 18),
-                label: const Text('Save'),
-              ),
-              OutlinedButton.icon(
-                onPressed: () => _runScheduleNow(schedule),
-                icon: const Icon(Icons.play_arrow_rounded, size: 18),
-                label: const Text('Run now'),
-              ),
-              Text('Last: ${schedule.lastRunAt ?? 'Never'}', style: TextStyle(color: Colors.grey.shade700)),
-              Text('Next: ${schedule.nextRunAt ?? 'Stopped'}', style: TextStyle(color: Colors.grey.shade700)),
+              if (!manual)
+                Text(
+                  'Next: ${schedule.nextRunAt ?? 'Stopped'}',
+                  style: TextStyle(color: Colors.grey.shade700),
+                ),
+              if ((schedule.lastRunResult ?? '').isNotEmpty)
+                Text(
+                  'Result: ${schedule.lastRunResult}',
+                  style: const TextStyle(fontWeight: FontWeight.w600),
+                ),
             ],
           ),
         ],
@@ -869,14 +940,53 @@ class _TenantDetailScreenState extends State<TenantDetailScreen> {
   }
 
   Future<void> _runScheduleNow(TenantSchedule schedule) async {
+    if (schedule.manualOnly) {
+      final confirmed = await showDialog<bool>(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text('Run attachment migration?'),
+          content: const Text(
+            'This will move legacy attachment bytes from the tenant database '
+            'to Google Cloud Storage and clear the database file column only '
+            'after each upload succeeds. The operation is idempotent and may '
+            'take several minutes.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text('Cancel'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.pop(context, true),
+              child: const Text('Run once'),
+            ),
+          ],
+        ),
+      );
+      if (confirmed != true) return;
+    }
+
     try {
-      await _tenantService.runTenantScheduleNow(_tenant.id, schedule.jobCode);
+      final result = await _tenantService.runTenantScheduleNow(
+        _tenant.id,
+        schedule.jobCode,
+      );
       if (!mounted) return;
       _refreshAll();
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Scheduled job triggered')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            result.lastRunResult?.isNotEmpty == true
+                ? result.lastRunResult!
+                : 'Job completed',
+          ),
+        ),
+      );
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Run failed: $e'), backgroundColor: Colors.red));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Run failed: $e'), backgroundColor: Colors.red),
+      );
     }
   }
 

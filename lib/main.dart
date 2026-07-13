@@ -16,6 +16,7 @@ void main() async {
 
   final authService = AuthService();
   final isLoggedIn = await authService.isLoggedIn();
+  if (isLoggedIn) authService.startKeepAlive();
 
   runApp(MyApp(initialRoute: isLoggedIn ? '/home' : '/login'));
 }
@@ -117,7 +118,7 @@ class MyHomePage extends StatelessWidget {
             Text(title),
             const SizedBox(width: 8),
             Text(
-              'v1.0.0+1 (${AppConfig.environment.name})',
+              'v1.0.1+2 (${AppConfig.environment.name})',
               style: theme.textTheme.labelSmall?.copyWith(
                 color: Colors.grey.shade500,
                 fontWeight: FontWeight.normal,
