@@ -54,6 +54,7 @@ class AuthenticatedHttpClient {
     Object? body,
     Encoding? encoding,
   }) async {
+    await _authService.ensureFreshAccessToken();
     var response = await _execute(
       method,
       url,
@@ -64,17 +65,16 @@ class AuthenticatedHttpClient {
 
     if (response.statusCode != 401) return response;
 
-    final refreshed = await _authService.refreshAccessToken();
+    final refreshed = await _authService.ensureFreshAccessToken(force: true);
     if (!refreshed) return response;
 
-    response = await _execute(
+    return _execute(
       method,
       url,
       headers: await _headersWithCurrentToken(headers),
       body: body,
       encoding: encoding,
     );
-    return response;
   }
 
   Future<Map<String, String>> _headersWithCurrentToken(
