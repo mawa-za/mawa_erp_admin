@@ -118,7 +118,7 @@ class MyHomePage extends StatelessWidget {
             Text(title),
             const SizedBox(width: 8),
             Text(
-              'v1.0.1+2 (${AppConfig.environment.name})',
+              'v1.0.4+5 (${AppConfig.environment.name})',
               style: theme.textTheme.labelSmall?.copyWith(
                 color: Colors.grey.shade500,
                 fontWeight: FontWeight.normal,
@@ -136,6 +136,25 @@ class MyHomePage extends StatelessWidget {
             child: IconButton(
               icon: Icon(Icons.logout_rounded, color: Colors.red.shade700),
               onPressed: () async {
+                final confirmed = await showDialog<bool>(
+                  context: context,
+                  builder: (dialogContext) => AlertDialog(
+                    title: const Text('Sign out?'),
+                    content: const Text('You will need to sign in again to manage MAWA tenants.'),
+                    actions: [
+                      TextButton(
+                        onPressed: () => Navigator.of(dialogContext).pop(false),
+                        child: const Text('CANCEL'),
+                      ),
+                      FilledButton.icon(
+                        onPressed: () => Navigator.of(dialogContext).pop(true),
+                        icon: const Icon(Icons.logout_rounded, size: 18),
+                        label: const Text('SIGN OUT'),
+                      ),
+                    ],
+                  ),
+                );
+                if (confirmed != true) return;
                 await AuthService().logout();
                 if (context.mounted) {
                   Navigator.of(context).pushReplacementNamed('/login');

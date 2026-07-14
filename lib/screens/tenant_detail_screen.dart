@@ -25,6 +25,18 @@ class _TenantDetailScreenState extends State<TenantDetailScreen> {
   late Future<List<TenantActivityLog>> _activityFuture;
   late Future<List<TenantSchedule>> _schedulesFuture;
   late Future<List<SubscriptionPlan>> _plansFuture;
+  int _selectedSection = 0;
+  final TextEditingController _propertySearchController = TextEditingController();
+  final TextEditingController _activitySearchController = TextEditingController();
+  String _activityCategory = 'ALL';
+
+  static const List<_TenantSection> _sections = [
+    _TenantSection('Overview', Icons.dashboard_outlined),
+    _TenantSection('Subscription & Modules', Icons.extension_outlined),
+    _TenantSection('Integration', Icons.hub_outlined),
+    _TenantSection('Data & Security', Icons.admin_panel_settings_outlined),
+    _TenantSection('Activity', Icons.history_outlined),
+  ];
 
   @override
   void initState() {
@@ -51,7 +63,15 @@ class _TenantDetailScreenState extends State<TenantDetailScreen> {
   }
 
   @override
+  void dispose() {
+    _propertySearchController.dispose();
+    _activitySearchController.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final wide = MediaQuery.of(context).size.width >= 900;
     return Scaffold(
       appBar: AppBar(
         title: Text(_tenant.name),
@@ -59,33 +79,121 @@ class _TenantDetailScreenState extends State<TenantDetailScreen> {
           IconButton(icon: const Icon(Icons.refresh), onPressed: _refreshAll),
         ],
       ),
-      body: RefreshIndicator(
-        onRefresh: () async => _refreshAll(),
-        child: SingleChildScrollView(
-          physics: const AlwaysScrollableScrollPhysics(),
-          padding: const EdgeInsets.all(16.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              _buildInfoCard(),
-              const SizedBox(height: 16),
-              _buildSubscriptionCard(),
-              const SizedBox(height: 16),
-              _buildModuleManagementCard(),
-              const SizedBox(height: 16),
-              _buildErpIntegrationCard(),
-              const SizedBox(height: 16),
-              _buildSchedulingCard(),
-              const SizedBox(height: 16),
-              _buildSecretManagerCard(),
-              const SizedBox(height: 16),
-              _buildPropertiesCard(),
-              const SizedBox(height: 16),
-              _buildActivityCard(),
-              const SizedBox(height: 40),
-            ],
+      body: Row(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          if (wide) _buildNavigationRail(),
+          Expanded(
+            child: Column(
+              children: [
+                if (!wide) _buildCompactNavigation(),
+                Expanded(child: _buildSelectedSection()),
+              ],
+            ),
           ),
-        ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildNavigationRail() {
+    return Container(
+      width: 248,
+      color: Colors.white,
+      padding: const EdgeInsets.fromLTRB(12, 16, 12, 16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            child: Text(
+              'Tenant Configuration',
+              style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+            ),
+          ),
+          const SizedBox(height: 8),
+          ...List.generate(_sections.length, (index) {
+            final section = _sections[index];
+            final selected = _selectedSection == index;
+            return Padding(
+              padding: const EdgeInsets.only(bottom: 6),
+              child: ListTile(
+                selected: selected,
+                selectedTileColor: Theme.of(context).colorScheme.primaryContainer.withOpacity(0.55),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                leading: Icon(section.icon),
+                title: Text(section.label, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+                onTap: () => setState(() => _selectedSection = index),
+              ),
+            );
+          }),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCompactNavigation() {
+    return Container(
+      height: 58,
+      color: Colors.white,
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      child: ListView.separated(
+        scrollDirection: Axis.horizontal,
+        padding: const EdgeInsets.symmetric(horizontal: 12),
+        itemCount: _sections.length,
+        separatorBuilder: (_, __) => const SizedBox(width: 8),
+        itemBuilder: (context, index) {
+          final section = _sections[index];
+          return ChoiceChip(
+            avatar: Icon(section.icon, size: 18),
+            label: Text(section.label),
+            selected: _selectedSection == index,
+            showCheckmark: false,
+            onSelected: (_) => setState(() => _selectedSection = index),
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _buildSelectedSection() {
+    switch (_selectedSection) {
+      case 1:
+        return _buildSectionScroll([
+          _buildSubscriptionCard(),
+          _buildModuleManagementCard(),
+        ]);
+      case 2:
+        return _buildSectionScroll([
+          _buildErpIntegrationCard(),
+          _buildSecretManagerCard(),
+        ]);
+      case 3:
+        return _buildSectionScroll([
+          _buildDataMaintenanceCard(),
+          _buildPropertiesCard(),
+        ]);
+      case 4:
+        return _buildSectionScroll([_buildActivityCard()]);
+      default:
+        return _buildSectionScroll([
+          _buildInfoCard(),
+          _buildErpIntegrationCard(),
+        ]);
+    }
+  }
+
+  Widget _buildSectionScroll(List<Widget> children) {
+    return RefreshIndicator(
+      onRefresh: () async => _refreshAll(),
+      child: ListView.separated(
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: const EdgeInsets.all(16),
+        itemCount: children.length + 1,
+        separatorBuilder: (_, __) => const SizedBox(height: 16),
+        itemBuilder: (context, index) => index == children.length
+            ? const SizedBox(height: 24)
+            : children[index],
       ),
     );
   }
@@ -297,7 +405,7 @@ class _TenantDetailScreenState extends State<TenantDetailScreen> {
   }
 
 
-  Widget _buildSchedulingCard() {
+  Widget _buildDataMaintenanceCard() {
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(16),
@@ -306,13 +414,18 @@ class _TenantDetailScreenState extends State<TenantDetailScreen> {
           children: [
             Row(
               children: [
-                Icon(Icons.schedule_rounded, color: Colors.deepOrange.shade700),
+                Icon(Icons.cloud_sync_outlined, color: Colors.deepOrange.shade700),
                 const SizedBox(width: 8),
-                const Expanded(child: Text('Tenant Schedules', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold))),
+                const Expanded(child: Text('Data Maintenance', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold))),
                 IconButton(icon: const Icon(Icons.refresh_rounded), onPressed: _refreshAll),
               ],
             ),
-            const Divider(),
+            const SizedBox(height: 4),
+            Text(
+              'Run controlled, once-off tenant maintenance operations. Recurring scheduled-job configuration is managed by the platform and is intentionally hidden here.',
+              style: TextStyle(color: Colors.grey.shade700, fontSize: 12),
+            ),
+            const Divider(height: 24),
             FutureBuilder<List<TenantSchedule>>(
               future: _schedulesFuture,
               builder: (context, snapshot) {
@@ -320,13 +433,15 @@ class _TenantDetailScreenState extends State<TenantDetailScreen> {
                   return const LinearProgressIndicator();
                 }
                 if (snapshot.hasError) {
-                  return Text('Failed to load schedules: ${snapshot.error}', style: const TextStyle(color: Colors.red));
+                  return Text('Failed to load maintenance operations: ${snapshot.error}', style: const TextStyle(color: Colors.red));
                 }
-                final schedules = snapshot.data ?? [];
-                if (schedules.isEmpty) {
-                  return const Text('No scheduled jobs configured for this tenant.');
+                final manualJobs = (snapshot.data ?? [])
+                    .where((schedule) => schedule.manualOnly || schedule.jobCode == 'ATTACHMENT_GCS_MIGRATION')
+                    .toList();
+                if (manualJobs.isEmpty) {
+                  return const Text('No once-off maintenance operations are available.');
                 }
-                return Column(children: schedules.map(_buildScheduleTile).toList());
+                return Column(children: manualJobs.map(_buildScheduleTile).toList());
               },
             ),
           ],
@@ -511,7 +626,17 @@ class _TenantDetailScreenState extends State<TenantDetailScreen> {
                 IconButton(icon: const Icon(Icons.add_circle_outline), onPressed: _showAddPropertyDialog, tooltip: 'Add Property'),
               ],
             ),
-            const Divider(),
+            const SizedBox(height: 8),
+            TextField(
+              controller: _propertySearchController,
+              onChanged: (_) => setState(() {}),
+              decoration: const InputDecoration(
+                hintText: 'Search properties, values or secret references',
+                prefixIcon: Icon(Icons.search_rounded),
+                isDense: true,
+              ),
+            ),
+            const SizedBox(height: 12),
             FutureBuilder<List<TenantProperty>>(
               future: _propertiesFuture,
               builder: (context, snapshot) {
@@ -521,16 +646,33 @@ class _TenantDetailScreenState extends State<TenantDetailScreen> {
                 if (snapshot.hasError) {
                   return Text('Error loading properties: ${snapshot.error}', style: const TextStyle(color: Colors.red));
                 }
-                final properties = snapshot.data ?? [];
+                final query = _propertySearchController.text.trim().toLowerCase();
+                final properties = (snapshot.data ?? []).where((property) {
+                  if (query.isEmpty) return true;
+                  return property.property.toLowerCase().contains(query) ||
+                      property.displayValue.toLowerCase().contains(query);
+                }).toList()
+                  ..sort((a, b) => a.property.compareTo(b.property));
                 if (properties.isEmpty) {
-                  return const Text('No properties configured for this tenant.');
+                  return Text(query.isEmpty ? 'No properties configured for this tenant.' : 'No matching properties.');
                 }
-                return ListView.separated(
-                  shrinkWrap: true,
-                  physics: const NeverScrollableScrollPhysics(),
-                  itemCount: properties.length,
-                  separatorBuilder: (_, __) => const Divider(height: 1),
-                  itemBuilder: (context, index) => _buildPropertyTile(properties[index]),
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('${properties.length} properties', style: TextStyle(color: Colors.grey.shade600, fontSize: 12)),
+                    const SizedBox(height: 8),
+                    SizedBox(
+                      height: 430,
+                      child: Scrollbar(
+                        thumbVisibility: true,
+                        child: ListView.separated(
+                          itemCount: properties.length,
+                          separatorBuilder: (_, __) => const Divider(height: 1),
+                          itemBuilder: (context, index) => _buildPropertyTile(properties[index]),
+                        ),
+                      ),
+                    ),
+                  ],
                 );
               },
             ),
@@ -554,7 +696,41 @@ class _TenantDetailScreenState extends State<TenantDetailScreen> {
                 Text('Activity', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
               ],
             ),
-            const Divider(),
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                Expanded(
+                  child: TextField(
+                    controller: _activitySearchController,
+                    onChanged: (_) => setState(() {}),
+                    decoration: const InputDecoration(
+                      hintText: 'Search activity',
+                      prefixIcon: Icon(Icons.search_rounded),
+                      isDense: true,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                SizedBox(
+                  width: 180,
+                  child: DropdownButtonFormField<String>(
+                    value: _activityCategory,
+                    isExpanded: true,
+                    decoration: const InputDecoration(labelText: 'Category', isDense: true),
+                    items: const [
+                      DropdownMenuItem(value: 'ALL', child: Text('All categories')),
+                      DropdownMenuItem(value: 'TENANT', child: Text('Tenant')),
+                      DropdownMenuItem(value: 'MODULE', child: Text('Module')),
+                      DropdownMenuItem(value: 'PROPERTY', child: Text('Property')),
+                      DropdownMenuItem(value: 'SUBSCRIPTION', child: Text('Subscription')),
+                      DropdownMenuItem(value: 'SCHEDULE', child: Text('Maintenance')),
+                    ],
+                    onChanged: (value) => setState(() => _activityCategory = value ?? 'ALL'),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
             FutureBuilder<List<TenantActivityLog>>(
               future: _activityFuture,
               builder: (context, snapshot) {
@@ -564,25 +740,45 @@ class _TenantDetailScreenState extends State<TenantDetailScreen> {
                 if (snapshot.hasError) {
                   return Text('Failed to load activity: ${snapshot.error}', style: const TextStyle(color: Colors.red));
                 }
-                final items = snapshot.data ?? [];
+                final query = _activitySearchController.text.trim().toLowerCase();
+                final items = (snapshot.data ?? []).where((item) {
+                  final categoryMatches = _activityCategory == 'ALL' || item.category.toUpperCase().contains(_activityCategory);
+                  final searchMatches = query.isEmpty ||
+                      item.message.toLowerCase().contains(query) ||
+                      item.action.toLowerCase().contains(query) ||
+                      item.actor.toLowerCase().contains(query);
+                  return categoryMatches && searchMatches;
+                }).toList()
+                  ..sort((a, b) => (b.createdAt ?? '').compareTo(a.createdAt ?? ''));
                 if (items.isEmpty) {
-                  return const Text('No tenant activity recorded yet.');
+                  return const Text('No matching tenant activity.');
                 }
-                return ListView.separated(
-                  shrinkWrap: true,
-                  physics: const NeverScrollableScrollPhysics(),
-                  itemCount: items.length,
-                  separatorBuilder: (_, __) => const Divider(height: 1),
-                  itemBuilder: (context, index) {
-                    final item = items[index];
-                    return ListTile(
-                      dense: true,
-                      contentPadding: EdgeInsets.zero,
-                      leading: const Icon(Icons.event_note_rounded, size: 20),
-                      title: Text(item.message),
-                      subtitle: Text('${item.category} • ${item.action} • ${item.actor} • ${item.createdAt ?? ''}'),
-                    );
-                  },
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('Showing ${items.length} events, latest first', style: TextStyle(color: Colors.grey.shade600, fontSize: 12)),
+                    const SizedBox(height: 8),
+                    SizedBox(
+                      height: 500,
+                      child: Scrollbar(
+                        thumbVisibility: true,
+                        child: ListView.separated(
+                          itemCount: items.length,
+                          separatorBuilder: (_, __) => const Divider(height: 1),
+                          itemBuilder: (context, index) {
+                            final item = items[index];
+                            return ListTile(
+                              dense: true,
+                              contentPadding: const EdgeInsets.symmetric(horizontal: 4),
+                              leading: const Icon(Icons.event_note_rounded, size: 20),
+                              title: Text(item.message, maxLines: 2, overflow: TextOverflow.ellipsis),
+                              subtitle: Text('${item.category} • ${item.action} • ${item.actor} • ${item.createdAt ?? ''}'),
+                            );
+                          },
+                        ),
+                      ),
+                    ),
+                  ],
                 );
               },
             ),
@@ -1173,4 +1369,11 @@ class _TenantDetailScreenState extends State<TenantDetailScreen> {
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Open ERP failed: $e'), backgroundColor: Colors.red));
     }
   }
+}
+
+class _TenantSection {
+  final String label;
+  final IconData icon;
+
+  const _TenantSection(this.label, this.icon);
 }
