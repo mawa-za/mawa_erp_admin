@@ -43,6 +43,8 @@ class SubscriptionPlan {
   final int? maxBranches;
   final int? maxDevices;
   final int? displayOrder;
+  final String? createdAt;
+  final String? updatedAt;
 
   SubscriptionPlan({
     required this.code,
@@ -56,6 +58,8 @@ class SubscriptionPlan {
     this.maxBranches,
     this.maxDevices,
     this.displayOrder,
+    this.createdAt,
+    this.updatedAt,
   });
 
   factory SubscriptionPlan.fromJson(Map<String, dynamic> json) {
@@ -72,6 +76,8 @@ class SubscriptionPlan {
       maxBranches: asNullableInt(json['maxBranches']),
       maxDevices: asNullableInt(json['maxDevices']),
       displayOrder: asNullableInt(json['displayOrder']),
+      createdAt: json['createdAt']?.toString(),
+      updatedAt: json['updatedAt']?.toString(),
     );
   }
 
@@ -87,6 +93,8 @@ class SubscriptionPlan {
         'maxBranches': maxBranches,
         'maxDevices': maxDevices,
         'displayOrder': displayOrder,
+        'createdAt': createdAt,
+        'updatedAt': updatedAt,
       };
 }
 

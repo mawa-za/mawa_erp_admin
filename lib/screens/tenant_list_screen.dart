@@ -13,6 +13,7 @@ class TenantListScreen extends StatefulWidget {
 class _TenantListScreenState extends State<TenantListScreen> {
   final TenantService _tenantService = TenantService();
   late Future<List<Tenant>> _tenantsFuture;
+  String _selectedStatus = 'ALL';
 
   @override
   void initState() {
@@ -71,8 +72,40 @@ class _TenantListScreenState extends State<TenantListScreen> {
             );
           }
 
-          final tenants = snapshot.data!;
-          return ListView.builder(
+          final allTenants = List<Tenant>.from(snapshot.data!)
+            ..sort((a, b) => b.id.compareTo(a.id));
+          final statuses = allTenants
+              .map((tenant) => tenant.status.toUpperCase())
+              .toSet()
+              .toList()
+            ..sort();
+          final tenants = _selectedStatus == 'ALL'
+              ? allTenants
+              : allTenants
+                  .where((tenant) => tenant.status.toUpperCase() == _selectedStatus)
+                  .toList();
+          return Column(
+            children: [
+              SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
+                child: Row(
+                  children: ['ALL', ...statuses].map((status) {
+                    return Padding(
+                      padding: const EdgeInsets.only(right: 8),
+                      child: ChoiceChip(
+                        label: Text(status == 'ALL' ? 'All statuses' : status),
+                        selected: _selectedStatus == status,
+                        onSelected: (_) => setState(() => _selectedStatus = status),
+                      ),
+                    );
+                  }).toList(),
+                ),
+              ),
+              Expanded(
+                child: tenants.isEmpty
+                    ? const Center(child: Text('No tenants match this status.'))
+                    : ListView.builder(
             padding: const EdgeInsets.all(16),
             itemCount: tenants.length,
             itemBuilder: (context, index) {
@@ -144,6 +177,9 @@ class _TenantListScreenState extends State<TenantListScreen> {
                 ),
               );
             },
+          ),
+              ),
+            ],
           );
         },
       ),
