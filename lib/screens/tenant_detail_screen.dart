@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../utils/external_url_opener.dart';
@@ -966,6 +967,11 @@ class _TenantDetailScreenState extends State<TenantDetailScreen> {
       if (confirmed != true) return;
     }
 
+    if (schedule.jobCode == 'ATTACHMENT_GCS_MIGRATION') {
+      await _runAttachmentMigration(schedule);
+      return;
+    }
+
     try {
       final result = await _tenantService.runTenantScheduleNow(
         _tenant.id,
@@ -987,6 +993,142 @@ class _TenantDetailScreenState extends State<TenantDetailScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Run failed: $e'), backgroundColor: Colors.red),
       );
+    }
+  }
+
+  Future<void> _runAttachmentMigration(TenantSchedule schedule) async {
+    final progress = ValueNotifier<String>('Preparing attachment migration...');
+    var dialogOpen = true;
+
+    final dialogFuture = showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Migrating attachments'),
+        content: SizedBox(
+          width: 420,
+          child: ValueListenableBuilder<String>(
+            valueListenable: progress,
+            builder: (context, message, child) => Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const LinearProgressIndicator(),
+                const SizedBox(height: 16),
+                Text(message),
+                const SizedBox(height: 8),
+                const Text(
+                  'Keep this window open. The migration runs in bounded, '
+                  'restart-safe batches.',
+                  style: TextStyle(fontSize: 12),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+    unawaited(dialogFuture);
+    await Future<void>.delayed(Duration.zero);
+
+    String? cursor;
+    int totalAttempted = 0;
+    int totalMigrated = 0;
+    int totalFailed = 0;
+    int remaining = 0;
+    List<String> failures = const [];
+    var scanComplete = false;
+    var migrationCompleted = false;
+
+    try {
+      for (var batchNumber = 1; batchNumber <= 1000; batchNumber++) {
+        progress.value =
+            'Processing batch $batchNumber... '
+            '$totalMigrated attachment(s) migrated so far.';
+
+        final result = await _tenantService.runTenantScheduleNow(
+          _tenant.id,
+          schedule.jobCode,
+          afterId: cursor,
+          limit: 25,
+        );
+
+        totalAttempted += result.migrationAttempted;
+        totalMigrated += result.migrationMigrated;
+        totalFailed += result.migrationFailed;
+        remaining = result.migrationRemaining;
+        failures = result.migrationFailures;
+        scanComplete = result.migrationScanComplete;
+        migrationCompleted = result.migrationCompleted;
+
+        progress.value =
+            '$totalMigrated attachment(s) migrated; '
+            '$remaining legacy attachment(s) remaining; '
+            '$totalFailed failed.';
+
+        if (migrationCompleted || scanComplete) {
+          break;
+        }
+
+        final nextCursor = result.migrationNextCursor?.trim();
+        if (nextCursor == null ||
+            nextCursor.isEmpty ||
+            nextCursor == cursor) {
+          throw Exception(
+            'Migration did not return a valid continuation cursor.',
+          );
+        }
+        cursor = nextCursor;
+      }
+
+      if (!migrationCompleted && !scanComplete) {
+        throw Exception(
+          'Migration stopped after the safety limit of 1000 batches. '
+          'Run it again to continue.',
+        );
+      }
+
+      if (dialogOpen && mounted) {
+        Navigator.of(context, rootNavigator: true).pop();
+        dialogOpen = false;
+      }
+      await dialogFuture;
+      if (!mounted) return;
+
+      _refreshAll();
+      final summary = StringBuffer()
+        ..write('$totalMigrated attachment(s) migrated')
+        ..write('; $remaining legacy attachment(s) remaining')
+        ..write('; $totalFailed failed')
+        ..write('; $totalAttempted attempted');
+      if (failures.isNotEmpty) {
+        summary.write('. First failure: ${failures.first}');
+      }
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(summary.toString()),
+          backgroundColor:
+              remaining == 0 && totalFailed == 0 ? null : Colors.orange,
+          duration: const Duration(seconds: 12),
+        ),
+      );
+    } catch (e) {
+      if (dialogOpen && mounted) {
+        Navigator.of(context, rootNavigator: true).pop();
+        dialogOpen = false;
+      }
+      await dialogFuture;
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Attachment migration failed: $e'),
+          backgroundColor: Colors.red,
+          duration: const Duration(seconds: 12),
+        ),
+      );
+    } finally {
+      progress.dispose();
     }
   }
 

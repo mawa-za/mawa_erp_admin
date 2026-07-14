@@ -285,16 +285,36 @@ class TenantService {
     throw Exception(response.body.isNotEmpty ? response.body : 'Failed to save tenant schedule');
   }
 
-  Future<TenantSchedule> runTenantScheduleNow(String tenantId, String jobCode) async {
+  Future<TenantSchedule> runTenantScheduleNow(
+    String tenantId,
+    String jobCode, {
+    String? afterId,
+    int limit = 25,
+  }) async {
+    final queryParameters = <String, String>{
+      'limit': limit.clamp(1, 50).toString(),
+    };
+    if (afterId != null && afterId.trim().isNotEmpty) {
+      queryParameters['afterId'] = afterId.trim();
+    }
+
+    final uri = Uri.parse(
+      '${AppConfig.apiBaseUrl}/tenant/$tenantId/schedules/$jobCode/run-now',
+    ).replace(queryParameters: queryParameters);
+
     final response = await _client.post(
-      Uri.parse('${AppConfig.apiBaseUrl}/tenant/$tenantId/schedules/$jobCode/run-now'),
+      uri,
       headers: await _getHeaders(),
     );
 
     if (response.statusCode == 200) {
-      return TenantSchedule.fromJson(jsonDecode(response.body) as Map<String, dynamic>);
+      return TenantSchedule.fromJson(
+        jsonDecode(response.body) as Map<String, dynamic>,
+      );
     }
-    throw Exception(response.body.isNotEmpty ? response.body : 'Failed to run tenant schedule');
+    throw Exception(
+      response.body.isNotEmpty ? response.body : 'Failed to run tenant schedule',
+    );
   }
 
 }
