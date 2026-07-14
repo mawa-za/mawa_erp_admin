@@ -1015,13 +1015,18 @@ class _TenantDetailScreenState extends State<TenantDetailScreen> {
   }
 
   Future<void> _openTenantErp() async {
+    final reservedWindow = reserveExternalWindow();
     try {
       final handoff = await _tenantService.openTenantErp(_tenant.id);
-      final launched = await openExternalUrl(handoff.targetUrl);
+      if (handoff.targetUrl.trim().isEmpty) {
+        throw Exception('The backend did not return an ERP handoff URL.');
+      }
+      final launched = await navigateExternalWindow(reservedWindow, handoff.targetUrl);
       if (!launched && mounted) {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Could not open ERP URL: ${handoff.targetUrl}')));
       }
     } catch (e) {
+      closeExternalWindow(reservedWindow);
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Open ERP failed: $e'), backgroundColor: Colors.red));
     }
