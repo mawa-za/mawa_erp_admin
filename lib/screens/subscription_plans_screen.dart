@@ -12,6 +12,7 @@ class SubscriptionPlansScreen extends StatefulWidget {
 class _SubscriptionPlansScreenState extends State<SubscriptionPlansScreen> {
   final TenantService _tenantService = TenantService();
   late Future<List<SubscriptionPlan>> _plansFuture;
+  String _selectedStatus = 'ALL';
 
   @override
   void initState() {
@@ -44,15 +45,57 @@ class _SubscriptionPlansScreenState extends State<SubscriptionPlansScreen> {
           if (snapshot.hasError) {
             return Center(child: Text('Failed to load plans: ${snapshot.error}'));
           }
-          final plans = snapshot.data ?? [];
-          if (plans.isEmpty) {
+          final allPlans = List<SubscriptionPlan>.from(snapshot.data ?? const [])
+            ..sort((a, b) {
+              final aDate = DateTime.tryParse(a.createdAt ?? '');
+              final bDate = DateTime.tryParse(b.createdAt ?? '');
+              final dateCompare = (bDate?.millisecondsSinceEpoch ?? 0)
+                  .compareTo(aDate?.millisecondsSinceEpoch ?? 0);
+              if (dateCompare != 0) return dateCompare;
+              return b.code.compareTo(a.code);
+            });
+          if (allPlans.isEmpty) {
             return const Center(child: Text('No subscription plans configured.'));
           }
-          return ListView.separated(
-            padding: const EdgeInsets.all(16),
-            itemCount: plans.length,
-            separatorBuilder: (_, __) => const SizedBox(height: 12),
-            itemBuilder: (context, index) => _buildPlanCard(plans[index]),
+          final statuses = allPlans
+              .map((plan) => plan.status.toUpperCase())
+              .toSet()
+              .toList()
+            ..sort();
+          final plans = _selectedStatus == 'ALL'
+              ? allPlans
+              : allPlans
+                  .where((plan) => plan.status.toUpperCase() == _selectedStatus)
+                  .toList();
+          return Column(
+            children: [
+              SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
+                child: Row(
+                  children: ['ALL', ...statuses].map((status) {
+                    return Padding(
+                      padding: const EdgeInsets.only(right: 8),
+                      child: ChoiceChip(
+                        label: Text(status == 'ALL' ? 'All statuses' : status),
+                        selected: _selectedStatus == status,
+                        onSelected: (_) => setState(() => _selectedStatus = status),
+                      ),
+                    );
+                  }).toList(),
+                ),
+              ),
+              Expanded(
+                child: plans.isEmpty
+                    ? const Center(child: Text('No plans match this status.'))
+                    : ListView.separated(
+                      padding: const EdgeInsets.all(16),
+                      itemCount: plans.length,
+                      separatorBuilder: (_, __) => const SizedBox(height: 12),
+                      itemBuilder: (context, index) => _buildPlanCard(plans[index]),
+                    ),
+              ),
+            ],
           );
         },
       ),
