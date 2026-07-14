@@ -43,6 +43,8 @@ class SubscriptionPlan {
   final int? maxBranches;
   final int? maxDevices;
   final int? displayOrder;
+  final String? createdAt;
+  final String? updatedAt;
 
   SubscriptionPlan({
     required this.code,
@@ -56,6 +58,8 @@ class SubscriptionPlan {
     this.maxBranches,
     this.maxDevices,
     this.displayOrder,
+    this.createdAt,
+    this.updatedAt,
   });
 
   factory SubscriptionPlan.fromJson(Map<String, dynamic> json) {
@@ -72,6 +76,8 @@ class SubscriptionPlan {
       maxBranches: asNullableInt(json['maxBranches']),
       maxDevices: asNullableInt(json['maxDevices']),
       displayOrder: asNullableInt(json['displayOrder']),
+      createdAt: json['createdAt']?.toString(),
+      updatedAt: json['updatedAt']?.toString(),
     );
   }
 
@@ -87,6 +93,8 @@ class SubscriptionPlan {
         'maxBranches': maxBranches,
         'maxDevices': maxDevices,
         'displayOrder': displayOrder,
+        'createdAt': createdAt,
+        'updatedAt': updatedAt,
       };
 }
 
@@ -221,6 +229,14 @@ class TenantSchedule {
   final String? nextRunAt;
   final bool manualOnly;
   final String? lastRunResult;
+  final int migrationAttempted;
+  final int migrationMigrated;
+  final int migrationFailed;
+  final int migrationRemaining;
+  final bool migrationCompleted;
+  final bool migrationScanComplete;
+  final String? migrationNextCursor;
+  final List<String> migrationFailures;
 
   TenantSchedule({
     required this.jobCode,
@@ -232,6 +248,14 @@ class TenantSchedule {
     this.nextRunAt,
     this.manualOnly = false,
     this.lastRunResult,
+    this.migrationAttempted = 0,
+    this.migrationMigrated = 0,
+    this.migrationFailed = 0,
+    this.migrationRemaining = 0,
+    this.migrationCompleted = false,
+    this.migrationScanComplete = false,
+    this.migrationNextCursor,
+    this.migrationFailures = const [],
   });
 
   factory TenantSchedule.fromJson(Map<String, dynamic> json) => TenantSchedule(
@@ -244,6 +268,17 @@ class TenantSchedule {
         nextRunAt: json['nextRunAt'],
         manualOnly: json['manualOnly'] == true || json['manualOnly']?.toString() == 'true',
         lastRunResult: json['lastRunResult']?.toString(),
+        migrationAttempted: int.tryParse('${json['migrationAttempted'] ?? 0}') ?? 0,
+        migrationMigrated: int.tryParse('${json['migrationMigrated'] ?? 0}') ?? 0,
+        migrationFailed: int.tryParse('${json['migrationFailed'] ?? 0}') ?? 0,
+        migrationRemaining: int.tryParse('${json['migrationRemaining'] ?? 0}') ?? 0,
+        migrationCompleted: json['migrationCompleted'] == true || json['migrationCompleted']?.toString() == 'true',
+        migrationScanComplete: json['migrationScanComplete'] == true || json['migrationScanComplete']?.toString() == 'true',
+        migrationNextCursor: json['migrationNextCursor']?.toString(),
+        migrationFailures: (json['migrationFailures'] as List<dynamic>?)
+                ?.map((item) => item.toString())
+                .toList() ??
+            const [],
       );
 
   Map<String, dynamic> toJson() => {
@@ -256,6 +291,14 @@ class TenantSchedule {
         'nextRunAt': nextRunAt,
         'manualOnly': manualOnly,
         'lastRunResult': lastRunResult,
+        'migrationAttempted': migrationAttempted,
+        'migrationMigrated': migrationMigrated,
+        'migrationFailed': migrationFailed,
+        'migrationRemaining': migrationRemaining,
+        'migrationCompleted': migrationCompleted,
+        'migrationScanComplete': migrationScanComplete,
+        'migrationNextCursor': migrationNextCursor,
+        'migrationFailures': migrationFailures,
       };
 
   TenantSchedule copyWith({bool? enabled, int? intervalMinutes}) => TenantSchedule(
@@ -268,5 +311,13 @@ class TenantSchedule {
         nextRunAt: nextRunAt,
         manualOnly: manualOnly,
         lastRunResult: lastRunResult,
+        migrationAttempted: migrationAttempted,
+        migrationMigrated: migrationMigrated,
+        migrationFailed: migrationFailed,
+        migrationRemaining: migrationRemaining,
+        migrationCompleted: migrationCompleted,
+        migrationScanComplete: migrationScanComplete,
+        migrationNextCursor: migrationNextCursor,
+        migrationFailures: migrationFailures,
       );
 }
