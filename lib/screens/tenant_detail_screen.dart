@@ -1237,17 +1237,35 @@ class _TenantDetailScreenState extends State<TenantDetailScreen> {
     var migrationCompleted = false;
 
     try {
-      for (var batchNumber = 1; batchNumber <= 1000; batchNumber++) {
+      for (var batchNumber = 1; batchNumber <= 100000; batchNumber++) {
         progress.value =
             'Processing batch $batchNumber... '
             '$totalMigrated attachment(s) migrated so far.';
 
-        final result = await _tenantService.runTenantScheduleNow(
-          _tenant.id,
-          schedule.jobCode,
-          afterId: cursor,
-          limit: 25,
-        );
+        dynamic result;
+        Object? lastError;
+        for (var attempt = 1; attempt <= 3; attempt++) {
+          try {
+            final batchLimit = attempt == 1 ? 5 : (attempt == 2 ? 2 : 1);
+            result = await _tenantService.runTenantScheduleNow(
+              _tenant.id,
+              schedule.jobCode,
+              afterId: cursor,
+              limit: batchLimit,
+            );
+            lastError = null;
+            break;
+          } catch (error) {
+            lastError = error;
+            progress.value =
+                'Batch $batchNumber attempt $attempt failed. Retrying with a smaller '
+                'restart-safe batch...';
+            if (attempt < 3) {
+              await Future<void>.delayed(Duration(seconds: attempt * 2));
+            }
+          }
+        }
+        if (lastError != null) throw lastError;
 
         totalAttempted += result.migrationAttempted;
         totalMigrated += result.migrationMigrated;
@@ -1279,7 +1297,7 @@ class _TenantDetailScreenState extends State<TenantDetailScreen> {
 
       if (!migrationCompleted && !scanComplete) {
         throw Exception(
-          'Migration stopped after the safety limit of 1000 batches. '
+          'Migration stopped after the safety limit of 100000 batches. '
           'Run it again to continue.',
         );
       }
