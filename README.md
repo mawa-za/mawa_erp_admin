@@ -18,3 +18,5 @@ samples, guidance on mobile development, and a full API reference.
 ## Google Secret Manager
 
 Tenant detail now supports saving sensitive tenant properties to Google Secret Manager. Use **Add Secret** or enable **Store value in Google Secret Manager** when adding a property. The admin console sends the raw value to `mawa-admin-bes`; the backend creates or updates a GCP Secret Manager secret and stores only the generated `gcp-secret://...` reference against the tenant property.
+
+Secret names are displayed read-only before saving and follow `mawa-{environment}-{tenant-host-normalised}-{property-normalised}`. Custom secret names are not accepted.

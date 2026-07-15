@@ -32,14 +32,12 @@ class TenantPropertyRequest {
   final String property;
   final String value;
   final bool storeAsSecret;
-  final String? secretName;
 
   TenantPropertyRequest({
     required this.tenant,
     required this.property,
     required this.value,
     this.storeAsSecret = false,
-    this.secretName,
   });
 
   Map<String, dynamic> toJson() {
@@ -48,7 +46,6 @@ class TenantPropertyRequest {
       'property': property,
       'value': value,
       'storeAsSecret': storeAsSecret,
-      if (secretName != null && secretName!.isNotEmpty) 'secretName': secretName,
     };
   }
 }
