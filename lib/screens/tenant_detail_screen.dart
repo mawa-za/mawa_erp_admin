@@ -1047,9 +1047,44 @@ class _TenantDetailScreenState extends State<TenantDetailScreen> {
   void _showAddPropertyDialog({bool storeAsSecretDefault = false}) {
     final propertyController = TextEditingController();
     final valueController = TextEditingController();
-    final secretNameController = TextEditingController();
+    Timer? secretNameDebounce;
     bool isSaving = false;
     bool storeAsSecret = storeAsSecretDefault;
+    bool isLoadingSecretName = false;
+    bool dialogOpen = true;
+    String generatedSecretName = '';
+    int secretNameRequest = 0;
+
+    void refreshGeneratedSecretName(StateSetter setDialogState) {
+      secretNameDebounce?.cancel();
+      final property = propertyController.text.trim();
+      if (!storeAsSecret || property.isEmpty) {
+        setDialogState(() {
+          generatedSecretName = '';
+          isLoadingSecretName = false;
+        });
+        return;
+      }
+
+      final requestId = ++secretNameRequest;
+      setDialogState(() => isLoadingSecretName = true);
+      secretNameDebounce = Timer(const Duration(milliseconds: 300), () async {
+        try {
+          final name = await _tenantService.getGeneratedTenantSecretName(_tenant.id, property);
+          if (!dialogOpen || requestId != secretNameRequest) return;
+          setDialogState(() {
+            generatedSecretName = name;
+            isLoadingSecretName = false;
+          });
+        } catch (_) {
+          if (!dialogOpen || requestId != secretNameRequest) return;
+          setDialogState(() {
+            generatedSecretName = '';
+            isLoadingSecretName = false;
+          });
+        }
+      });
+    }
 
     showDialog(
       context: context,
@@ -1067,15 +1102,42 @@ class _TenantDetailScreenState extends State<TenantDetailScreen> {
                     title: const Text('Store value in Google Secret Manager'),
                     subtitle: const Text('Only the generated secret reference is stored against the tenant.'),
                     value: storeAsSecret,
-                    onChanged: isSaving ? null : (value) => setDialogState(() => storeAsSecret = value),
+                    onChanged: isSaving
+                        ? null
+                        : (value) {
+                            setDialogState(() => storeAsSecret = value);
+                            refreshGeneratedSecretName(setDialogState);
+                          },
                   ),
                   const SizedBox(height: 12),
-                  TextField(controller: propertyController, decoration: const InputDecoration(labelText: 'Property Name', hintText: 'e.g. XERO-SECRET-KEY'), textCapitalization: TextCapitalization.characters),
+                  TextField(
+                    controller: propertyController,
+                    decoration: const InputDecoration(labelText: 'Property Name', hintText: 'e.g. XERO-SECRET-KEY'),
+                    textCapitalization: TextCapitalization.characters,
+                    onChanged: (_) => refreshGeneratedSecretName(setDialogState),
+                  ),
                   const SizedBox(height: 16),
-                  TextField(controller: valueController, decoration: InputDecoration(labelText: storeAsSecret ? 'Secret Value' : 'Value'), obscureText: storeAsSecret, maxLines: storeAsSecret ? 1 : 3, minLines: 1),
+                  TextField(
+                    controller: valueController,
+                    decoration: InputDecoration(labelText: storeAsSecret ? 'Secret Value' : 'Value'),
+                    obscureText: storeAsSecret,
+                    maxLines: storeAsSecret ? 1 : 3,
+                    minLines: 1,
+                  ),
                   if (storeAsSecret) ...[
                     const SizedBox(height: 16),
-                    TextField(controller: secretNameController, decoration: const InputDecoration(labelText: 'Secret Name (Optional)', hintText: 'Leave blank to auto-generate')),
+                    InputDecorator(
+                      decoration: const InputDecoration(
+                        labelText: 'Generated GCP Secret Name',
+                        helperText: 'Generated from the environment, tenant host and property. This name cannot be changed.',
+                        border: OutlineInputBorder(),
+                      ),
+                      child: isLoadingSecretName
+                          ? const LinearProgressIndicator()
+                          : SelectableText(
+                              generatedSecretName.isEmpty ? 'Enter a property name to generate the secret name' : generatedSecretName,
+                            ),
+                    ),
                   ],
                 ],
               ),
@@ -1102,7 +1164,6 @@ class _TenantDetailScreenState extends State<TenantDetailScreen> {
                             property: propertyName,
                             value: propertyValue,
                             storeAsSecret: storeAsSecret,
-                            secretName: secretNameController.text.trim().isEmpty ? null : secretNameController.text.trim(),
                           ),
                         );
                         if (mounted) {
@@ -1112,7 +1173,7 @@ class _TenantDetailScreenState extends State<TenantDetailScreen> {
                         }
                       } catch (e) {
                         if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red));
-                        setDialogState(() => isSaving = false);
+                        if (dialogOpen) setDialogState(() => isSaving = false);
                       }
                     },
               child: isSaving ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2)) : Text(storeAsSecret ? 'Save Secret' : 'Add'),
@@ -1120,7 +1181,12 @@ class _TenantDetailScreenState extends State<TenantDetailScreen> {
           ],
         ),
       ),
-    );
+    ).whenComplete(() {
+      dialogOpen = false;
+      secretNameDebounce?.cancel();
+      propertyController.dispose();
+      valueController.dispose();
+    });
   }
 
 
