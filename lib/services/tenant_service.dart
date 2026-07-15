@@ -82,6 +82,19 @@ class TenantService {
     }
   }
 
+  Future<String> getGeneratedTenantSecretName(String tenantId, String property) async {
+    final uri = Uri.parse('${AppConfig.apiBaseUrl}/tenant/$tenantId/secret-name').replace(
+      queryParameters: {'property': property},
+    );
+    final response = await _client.get(uri, headers: await _getHeaders());
+
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body) as Map<String, dynamic>;
+      return data['secretName']?.toString() ?? '';
+    }
+    throw Exception(response.body.isNotEmpty ? response.body : 'Failed to generate tenant secret name');
+  }
+
   Future<void> addTenantProperty(TenantPropertyRequest request) async {
     final response = await _client.post(
       Uri.parse('${AppConfig.apiBaseUrl}/tenant/${request.tenant}/property'),
