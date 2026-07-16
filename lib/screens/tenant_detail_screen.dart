@@ -1441,20 +1441,86 @@ class _TenantDetailScreenState extends State<TenantDetailScreen> {
   }
 
   Future<void> _openTenantErp() async {
+    final accessReasonController = TextEditingController();
+    final ticketController = TextEditingController();
+    final approved = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Open tenant ERP'),
+        content: SizedBox(
+          width: 520,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text(
+                'This creates a short-lived, fully audited platform administration session for this tenant.',
+              ),
+              const SizedBox(height: 16),
+              TextField(
+                controller: accessReasonController,
+                autofocus: true,
+                maxLines: 3,
+                decoration: const InputDecoration(
+                  labelText: 'Access reason',
+                  hintText: 'Describe the support, configuration, or verification work',
+                ),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: ticketController,
+                decoration: const InputDecoration(
+                  labelText: 'Ticket/reference (optional)',
+                ),
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () {
+              if (accessReasonController.text.trim().isEmpty) {
+                ScaffoldMessenger.of(dialogContext).showSnackBar(
+                  const SnackBar(content: Text('Access reason is required.')),
+                );
+                return;
+              }
+              Navigator.pop(dialogContext, true);
+            },
+            child: const Text('Open ERP'),
+          ),
+        ],
+      ),
+    );
+    if (approved != true) return;
+
     final reservedWindow = reserveExternalWindow();
     try {
-      final handoff = await _tenantService.openTenantErp(_tenant.id);
+      final handoff = await _tenantService.openTenantErp(
+        _tenant.id,
+        accessReason: accessReasonController.text.trim(),
+        ticketReference: ticketController.text.trim().isEmpty
+            ? null
+            : ticketController.text.trim(),
+      );
       if (handoff.targetUrl.trim().isEmpty) {
         throw Exception('The backend did not return an ERP handoff URL.');
       }
       final launched = await navigateExternalWindow(reservedWindow, handoff.targetUrl);
       if (!launched && mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Could not open ERP URL: ${handoff.targetUrl}')));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Could not open ERP URL: ${handoff.targetUrl}')),
+        );
       }
     } catch (e) {
       closeExternalWindow(reservedWindow);
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Open ERP failed: $e'), backgroundColor: Colors.red));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Open ERP failed: $e'), backgroundColor: Colors.red),
+      );
     }
   }
 }

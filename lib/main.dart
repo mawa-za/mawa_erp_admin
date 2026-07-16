@@ -3,8 +3,11 @@ import 'package:google_fonts/google_fonts.dart';
 import 'screens/login_screen.dart';
 import 'screens/tenant_list_screen.dart';
 import 'screens/subscription_plans_screen.dart';
+import 'screens/access_management_screen.dart';
 import 'services/auth_service.dart';
 import 'services/tenant_service.dart';
+import 'services/access_management_service.dart';
+import 'models/access_management.dart';
 import 'models/platform_management.dart';
 import 'config.dart';
 
@@ -94,6 +97,7 @@ class MyApp extends StatelessWidget {
         '/home': (context) => const MyHomePage(title: 'mawa Admin'),
         '/tenant': (context) => const TenantListScreen(),
         '/subscriptions': (context) => const SubscriptionPlansScreen(),
+        '/access': (context) => const AccessManagementScreen(),
       },
     );
   }
@@ -164,73 +168,111 @@ class MyHomePage extends StatelessWidget {
           ),
         ],
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(24.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Welcome Back, Admin',
-              style: theme.textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'Manage your ERP infrastructure from here.',
-              style: theme.textTheme.bodyMedium?.copyWith(color: Colors.grey.shade600),
-            ),
-            const SizedBox(height: 24),
-            FutureBuilder<AdminDashboardSummary>(
-              future: tenantService.getDashboardSummary(),
-              builder: (context, snapshot) {
-                final summary = snapshot.data;
-                return Wrap(
-                  spacing: 12,
-                  runSpacing: 12,
-                  children: [
-                    _buildSummaryChip('Tenants', summary?.totalTenants.toString() ?? '...', Icons.business_rounded),
-                    _buildSummaryChip('Active', summary?.activeTenants.toString() ?? '...', Icons.check_circle_rounded),
-                    _buildSummaryChip('Suspended', summary?.suspendedTenants.toString() ?? '...', Icons.pause_circle_rounded),
-                    _buildSummaryChip('Subscriptions', summary?.activeSubscriptions.toString() ?? '...', Icons.workspace_premium_rounded),
-                  ],
-                );
-              },
-            ),
-            const SizedBox(height: 32),
-            GridView.count(
-              shrinkWrap: true,
-              crossAxisCount: MediaQuery.of(context).size.width > 600 ? 3 : 1,
-              crossAxisSpacing: 16,
-              mainAxisSpacing: 16,
-              childAspectRatio: 2.5,
+      body: FutureBuilder<AdminAccessProfile>(
+        future: AccessManagementService().getProfile(),
+        builder: (context, accessSnapshot) {
+          if (accessSnapshot.connectionState == ConnectionState.waiting) {
+            return const Center(child: CircularProgressIndicator());
+          }
+          if (accessSnapshot.hasError || !accessSnapshot.hasData) {
+            return Center(
+              child: Text('Unable to load access profile: ${accessSnapshot.error ?? 'No profile returned'}'),
+            );
+          }
+          final profile = accessSnapshot.data!;
+          bool can(String feature) => profile.allFeatures || profile.featureCodes.contains(feature);
+          final menuCards = <Widget>[
+            if (can('TENANT_MANAGEMENT'))
+              _buildMenuCard(
+                context,
+                title: 'Tenants',
+                subtitle: 'Manage instances',
+                icon: Icons.business_rounded,
+                color: const Color(0xFF1E88E5),
+                onTap: () => Navigator.pushNamed(context, '/tenant'),
+              ),
+            if (can('TENANT_SUBSCRIPTIONS'))
+              _buildMenuCard(
+                context,
+                title: 'Subscriptions',
+                subtitle: 'Plans and packages',
+                icon: Icons.workspace_premium_rounded,
+                color: Colors.purple,
+                onTap: () => Navigator.pushNamed(context, '/subscriptions'),
+              ),
+            if (can('USER_MANAGEMENT') || can('ROLE_MAINTENANCE') || can('AUDIT_LOGS'))
+              _buildMenuCard(
+                context,
+                title: 'Security',
+                subtitle: 'Users, roles and audit',
+                icon: Icons.security_rounded,
+                color: Colors.orange,
+                onTap: () => Navigator.pushNamed(context, '/access'),
+              ),
+          ];
+          return SingleChildScrollView(
+            padding: const EdgeInsets.all(24.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                _buildMenuCard(
-                  context,
-                  title: 'Tenants',
-                  subtitle: 'Manage instances',
-                  icon: Icons.business_rounded,
-                  color: const Color(0xFF1E88E5),
-                  onTap: () => Navigator.pushNamed(context, '/tenant'),
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(
+                    color: profile.user.testUser ? Colors.orange.shade50 : Colors.blue.shade50,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: profile.user.testUser ? Colors.orange.shade200 : Colors.blue.shade200),
+                  ),
+                  child: Wrap(
+                    spacing: 10,
+                    runSpacing: 6,
+                    crossAxisAlignment: WrapCrossAlignment.center,
+                    children: [
+                      Icon(profile.user.protectedUser ? Icons.shield_rounded : Icons.person_rounded),
+                      Text(profile.user.username, style: const TextStyle(fontWeight: FontWeight.bold)),
+                      ...profile.roles.map((role) => Chip(label: Text(role))),
+                      if (profile.user.testUser) const Chip(label: Text('TEST USER')),
+                      if (profile.allFeatures) const Chip(label: Text('ALL FEATURES')),
+                      Chip(label: Text(profile.environment.toUpperCase())),
+                    ],
+                  ),
                 ),
-                _buildMenuCard(
-                  context,
-                  title: 'Subscriptions',
-                  subtitle: 'Plans and packages',
-                  icon: Icons.workspace_premium_rounded,
-                  color: Colors.purple,
-                  onTap: () => Navigator.pushNamed(context, '/subscriptions'),
-                ),
-                _buildMenuCard(
-                  context,
-                  title: 'Security',
-                  subtitle: 'Access control',
-                  icon: Icons.security_rounded,
-                  color: Colors.orange,
-                  onTap: () {},
-                ),
+                const SizedBox(height: 24),
+                Text('Welcome Back, ${profile.user.username}', style: theme.textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold)),
+                const SizedBox(height: 8),
+                Text('Manage only the platform features assigned through Admin Role Maintenance.', style: theme.textTheme.bodyMedium?.copyWith(color: Colors.grey.shade600)),
+                if (can('TENANT_MANAGEMENT')) ...[
+                  const SizedBox(height: 24),
+                  FutureBuilder<AdminDashboardSummary>(
+                    future: tenantService.getDashboardSummary(),
+                    builder: (context, snapshot) {
+                      final summary = snapshot.data;
+                      return Wrap(spacing: 12, runSpacing: 12, children: [
+                        _buildSummaryChip('Tenants', summary?.totalTenants.toString() ?? '...', Icons.business_rounded),
+                        _buildSummaryChip('Active', summary?.activeTenants.toString() ?? '...', Icons.check_circle_rounded),
+                        _buildSummaryChip('Suspended', summary?.suspendedTenants.toString() ?? '...', Icons.pause_circle_rounded),
+                        _buildSummaryChip('Subscriptions', summary?.activeSubscriptions.toString() ?? '...', Icons.workspace_premium_rounded),
+                      ]);
+                    },
+                  ),
+                ],
+                const SizedBox(height: 32),
+                if (menuCards.isEmpty)
+                  const Card(child: Padding(padding: EdgeInsets.all(24), child: Text('No Admin Console features are assigned to your current roles.')))
+                else
+                  GridView.count(
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    crossAxisCount: MediaQuery.of(context).size.width > 600 ? 3 : 1,
+                    crossAxisSpacing: 16,
+                    mainAxisSpacing: 16,
+                    childAspectRatio: 2.5,
+                    children: menuCards,
+                  ),
               ],
             ),
-          ],
-        ),
+          );
+        },
       ),
     );
   }
