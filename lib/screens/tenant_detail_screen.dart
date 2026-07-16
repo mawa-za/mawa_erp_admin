@@ -25,6 +25,7 @@ class _TenantDetailScreenState extends State<TenantDetailScreen> {
   late Future<List<TenantActivityLog>> _activityFuture;
   late Future<List<TenantSchedule>> _schedulesFuture;
   late Future<List<SubscriptionPlan>> _plansFuture;
+  late Future<Map<String, dynamic>> _printingFuture;
   int _selectedSection = 0;
   final TextEditingController _propertySearchController = TextEditingController();
   final TextEditingController _activitySearchController = TextEditingController();
@@ -36,6 +37,7 @@ class _TenantDetailScreenState extends State<TenantDetailScreen> {
     _TenantSection('Integration', Icons.hub_outlined),
     _TenantSection('Data & Security', Icons.admin_panel_settings_outlined),
     _TenantSection('Activity', Icons.history_outlined),
+    _TenantSection('POS Printing', Icons.point_of_sale_outlined),
   ];
 
   @override
@@ -53,6 +55,7 @@ class _TenantDetailScreenState extends State<TenantDetailScreen> {
       _activityFuture = _tenantService.getTenantActivity(_tenant.id);
       _schedulesFuture = _tenantService.getTenantSchedules(_tenant.id);
       _plansFuture = _tenantService.getSubscriptionPlans();
+      _printingFuture = _tenantService.getTenantPosPrinting(_tenant.id);
     });
   }
 
@@ -175,6 +178,8 @@ class _TenantDetailScreenState extends State<TenantDetailScreen> {
         ]);
       case 4:
         return _buildSectionScroll([_buildActivityCard()]);
+      case 5:
+        return _buildSectionScroll([_buildPosPrintingCard()]);
       default:
         return _buildSectionScroll([
           _buildInfoCard(),
@@ -404,6 +409,183 @@ class _TenantDetailScreenState extends State<TenantDetailScreen> {
     );
   }
 
+
+  Widget _buildPosPrintingCard() {
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(Icons.point_of_sale_outlined, color: Colors.deepOrange.shade700),
+                const SizedBox(width: 8),
+                const Expanded(child: Text('POS Print Agents', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold))),
+                OutlinedButton.icon(onPressed: _showCreatePrintAgentCodeDialog, icon: const Icon(Icons.add_link), label: const Text('Setup code')),
+                const SizedBox(width: 8),
+                IconButton(onPressed: _refreshAll, icon: const Icon(Icons.refresh)),
+              ],
+            ),
+            const Divider(),
+            FutureBuilder<Map<String, dynamic>>(
+              future: _printingFuture,
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) return const LinearProgressIndicator();
+                if (snapshot.hasError) return Text('Failed to load POS printing: ${snapshot.error}', style: const TextStyle(color: Colors.red));
+                final data = snapshot.data ?? const {};
+                final agents = (data['agents'] as List?) ?? const [];
+                final terminals = (data['terminals'] as List?) ?? const [];
+                final jobs = (data['jobs'] as List?) ?? const [];
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Wrap(spacing: 12, runSpacing: 8, children: [
+                      _buildMiniMetric('Agents', agents.length.toString()),
+                      _buildMiniMetric('Online', agents.where((a) => a is Map && a['online'] == true).length.toString()),
+                      _buildMiniMetric('Terminals', terminals.length.toString()),
+                      _buildMiniMetric('Recent Jobs', jobs.length.toString()),
+                      _buildMiniMetric('Failed', jobs.where((j) => j is Map && j['status'] == 'FAILED').length.toString()),
+                    ]),
+                    const SizedBox(height: 16),
+                    if (agents.isEmpty) const Text('No Windows print agents are enrolled for this tenant.'),
+                    ...agents.whereType<Map>().map((raw) {
+                      final agent = Map<String, dynamic>.from(raw);
+                      final printers = (agent['printers'] as List?) ?? const [];
+                      return ExpansionTile(
+                        tilePadding: EdgeInsets.zero,
+                        leading: Icon(
+                          agent['online'] == true ? Icons.computer : Icons.computer_outlined,
+                          color: agent['online'] == true ? Colors.green : Colors.orange,
+                        ),
+                        title: Text((agent['name'] ?? 'Unnamed agent').toString()),
+                        subtitle: Text('${agent['machineName'] ?? ''} • ${agent['location'] ?? ''} • ${printers.length} printer(s)\n${agent['online'] == true ? 'Online' : 'Offline'} • Heartbeat: ${agent['lastHeartbeatAt'] ?? 'never'}'),
+                        children: [
+                          ...printers.whereType<Map>().map((p) => ListTile(
+                            dense: true,
+                            leading: Icon(Icons.print_outlined, color: p['status'] == 'ONLINE' ? Colors.green : Colors.grey),
+                            title: Text((p['displayName'] ?? p['windowsQueueName'] ?? '').toString()),
+                            subtitle: Text('${p['status'] ?? ''} • ${p['windowsQueueName'] ?? ''}'),
+                          )),
+                          Align(
+                            alignment: Alignment.centerRight,
+                            child: TextButton.icon(
+                              onPressed: agent['status'] == 'ACTIVE' ? () => _revokePrintAgent(agent['id'].toString()) : null,
+                              icon: const Icon(Icons.block),
+                              label: const Text('Revoke agent'),
+                            ),
+                          ),
+                        ],
+                      );
+                    }),
+                    const SizedBox(height: 16),
+                    Text('ERP terminals', style: Theme.of(context).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold)),
+                    const SizedBox(height: 6),
+                    if (terminals.isEmpty) const Text('No ERP browser terminals have registered.'),
+                    ...terminals.whereType<Map>().map((raw) {
+                      final terminal = Map<String, dynamic>.from(raw);
+                      final enabled = terminal['enabled'] != false;
+                      return ListTile(
+                        dense: true,
+                        contentPadding: EdgeInsets.zero,
+                        leading: Icon(Icons.desktop_windows_outlined, color: enabled ? Colors.green : Colors.grey),
+                        title: Text((terminal['displayName'] ?? 'Unnamed terminal').toString()),
+                        subtitle: Text("${terminal['location'] ?? ''} • agent ${terminal['agentId'] ?? 'not assigned'}\nprinter ${terminal['defaultReceiptPrinterId'] ?? 'not assigned'}"),
+                        isThreeLine: true,
+                        trailing: Switch(
+                          value: enabled,
+                          onChanged: (value) => _setPrintTerminalEnabled(terminal['id'].toString(), value),
+                        ),
+                      );
+                    }),
+                    const SizedBox(height: 16),
+                    Text('Recent print jobs', style: Theme.of(context).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold)),
+                    const SizedBox(height: 6),
+                    if (jobs.isEmpty) const Text('No print jobs have been created.'),
+                    ...jobs.take(20).whereType<Map>().map((raw) {
+                      final job = Map<String, dynamic>.from(raw);
+                      final failed = job['status'] == 'FAILED';
+                      return ListTile(
+                        dense: true,
+                        contentPadding: EdgeInsets.zero,
+                        leading: Icon(failed ? Icons.error_outline : Icons.receipt_long_outlined, color: failed ? Colors.red : Colors.blueGrey),
+                        title: Text('${job['sourceType'] ?? ''} • ${job['sourceId'] ?? ''}'),
+                        subtitle: Text('${job['status'] ?? ''} • attempts ${job['attemptCount'] ?? 0}\n${job['lastError'] ?? job['createdAt'] ?? ''}'),
+                        isThreeLine: true,
+                        trailing: failed ? IconButton(icon: const Icon(Icons.replay), tooltip: 'Retry', onPressed: () => _retryPrintJob(job['id'].toString())) : null,
+                      );
+                    }),
+                  ],
+                );
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _showCreatePrintAgentCodeDialog() async {
+    final name = TextEditingController();
+    final location = TextEditingController();
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Create Windows agent setup code'),
+        content: Column(mainAxisSize: MainAxisSize.min, children: [
+          TextField(controller: name, decoration: const InputDecoration(labelText: 'Agent name', hintText: 'Front Desk PC')),
+          const SizedBox(height: 12),
+          TextField(controller: location, decoration: const InputDecoration(labelText: 'Location')),
+        ]),
+        actions: [TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')), FilledButton(onPressed: () => Navigator.pop(context, true), child: const Text('Create'))],
+      ),
+    );
+    if (confirmed != true) return;
+    try {
+      final result = await _tenantService.createPosPrintEnrollment(_tenant.id, agentName: name.text, location: location.text);
+      if (!mounted) return;
+      await showDialog<void>(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text('Enrollment code'),
+          content: Column(mainAxisSize: MainAxisSize.min, children: [
+            const Text('Use this one-time code during installation on the Windows POS computer.'),
+            const SizedBox(height: 16),
+            SelectableText((result['code'] ?? '').toString(), style: Theme.of(context).textTheme.headlineMedium?.copyWith(fontWeight: FontWeight.bold, letterSpacing: 4)),
+            const SizedBox(height: 8),
+            Text('Expires: ${result['expiresAt'] ?? ''}'),
+          ]),
+          actions: [FilledButton(onPressed: () => Navigator.pop(context), child: const Text('Done'))],
+        ),
+      );
+      _refreshAll();
+    } catch (e) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('$e'), backgroundColor: Colors.red));
+    }
+  }
+
+  Future<void> _revokePrintAgent(String agentId) async {
+    try { await _tenantService.revokePosPrintAgent(_tenant.id, agentId); _refreshAll(); }
+    catch (e) { if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('$e'), backgroundColor: Colors.red)); }
+  }
+
+  Future<void> _setPrintTerminalEnabled(String terminalId, bool enabled) async {
+    try {
+      await _tenantService.setPosTerminalEnabled(_tenant.id, terminalId, enabled);
+      _refreshAll();
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('$e'), backgroundColor: Colors.red),
+        );
+      }
+    }
+  }
+
+  Future<void> _retryPrintJob(String jobId) async {
+    try { await _tenantService.retryPosPrintJob(_tenant.id, jobId); _refreshAll(); }
+    catch (e) { if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('$e'), backgroundColor: Colors.red)); }
+  }
 
   Widget _buildDataMaintenanceCard() {
     return Card(
