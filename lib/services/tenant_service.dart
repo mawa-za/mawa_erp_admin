@@ -141,11 +141,20 @@ class TenantService {
     }
   }
 
-  Future<ErpHandoff> openTenantErp(String tenantId, {String redirectPath = '/home'}) async {
+  Future<ErpHandoff> openTenantErp(
+    String tenantId, {
+    String redirectPath = '/home',
+    required String accessReason,
+    String? ticketReference,
+  }) async {
     final response = await _client.post(
       Uri.parse('${AppConfig.apiBaseUrl}/tenant/$tenantId/open-erp'),
       headers: await _getHeaders(),
-      body: jsonEncode({'redirectPath': redirectPath}),
+      body: jsonEncode({
+        'redirectPath': redirectPath,
+        'accessReason': accessReason,
+        'ticketReference': ticketReference,
+      }),
     );
 
     if (response.statusCode == 200) {
