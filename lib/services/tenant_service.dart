@@ -141,11 +141,20 @@ class TenantService {
     }
   }
 
-  Future<ErpHandoff> openTenantErp(String tenantId, {String redirectPath = '/home'}) async {
+  Future<ErpHandoff> openTenantErp(
+    String tenantId, {
+    String redirectPath = '/home',
+    required String accessReason,
+    String? ticketReference,
+  }) async {
     final response = await _client.post(
       Uri.parse('${AppConfig.apiBaseUrl}/tenant/$tenantId/open-erp'),
       headers: await _getHeaders(),
-      body: jsonEncode({'redirectPath': redirectPath}),
+      body: jsonEncode({
+        'redirectPath': redirectPath,
+        'accessReason': accessReason,
+        'ticketReference': ticketReference,
+      }),
     );
 
     if (response.statusCode == 200) {
@@ -328,6 +337,60 @@ class TenantService {
     throw Exception(
       response.body.isNotEmpty ? response.body : 'Failed to run tenant schedule',
     );
+  }
+
+  Future<Map<String, dynamic>> getTenantPosPrinting(String tenantId) async {
+    final response = await _client.get(
+      Uri.parse('${AppConfig.apiBaseUrl}/tenant/$tenantId/pos-printing'),
+      headers: await _getHeaders(),
+    );
+    if (response.statusCode == 200) {
+      return Map<String, dynamic>.from(jsonDecode(response.body) as Map);
+    }
+    throw Exception(response.body.isNotEmpty ? response.body : 'Failed to load POS printing');
+  }
+
+  Future<Map<String, dynamic>> createPosPrintEnrollment(
+    String tenantId, {
+    required String agentName,
+    String? location,
+  }) async {
+    final response = await _client.post(
+      Uri.parse('${AppConfig.apiBaseUrl}/tenant/$tenantId/pos-printing/enrollments'),
+      headers: await _getHeaders(),
+      body: jsonEncode({'agentName': agentName, 'location': location, 'validMinutes': 30}),
+    );
+    if (response.statusCode == 200 || response.statusCode == 201) {
+      return Map<String, dynamic>.from(jsonDecode(response.body) as Map);
+    }
+    throw Exception(response.body.isNotEmpty ? response.body : 'Failed to create print agent enrollment');
+  }
+
+  Future<void> revokePosPrintAgent(String tenantId, String agentId) async {
+    final response = await _client.post(
+      Uri.parse('${AppConfig.apiBaseUrl}/tenant/$tenantId/pos-printing/agents/$agentId/revoke'),
+      headers: await _getHeaders(),
+    );
+    if (response.statusCode != 200) throw Exception(response.body.isNotEmpty ? response.body : 'Failed to revoke print agent');
+  }
+
+  Future<void> setPosTerminalEnabled(String tenantId, String terminalId, bool enabled) async {
+    final response = await _client.post(
+      Uri.parse('${AppConfig.apiBaseUrl}/tenant/$tenantId/pos-printing/terminals/$terminalId/enabled'),
+      headers: await _getHeaders(),
+      body: jsonEncode({'enabled': enabled}),
+    );
+    if (response.statusCode != 200) {
+      throw Exception(response.body.isNotEmpty ? response.body : 'Failed to update POS terminal');
+    }
+  }
+
+  Future<void> retryPosPrintJob(String tenantId, String jobId) async {
+    final response = await _client.post(
+      Uri.parse('${AppConfig.apiBaseUrl}/tenant/$tenantId/pos-printing/jobs/$jobId/retry'),
+      headers: await _getHeaders(),
+    );
+    if (response.statusCode != 200) throw Exception(response.body.isNotEmpty ? response.body : 'Failed to retry print job');
   }
 
 }
