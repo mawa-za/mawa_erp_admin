@@ -3,6 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'screens/login_screen.dart';
 import 'screens/tenant_list_screen.dart';
 import 'screens/subscription_plans_screen.dart';
+import 'screens/billing_modules_screen.dart';
 import 'screens/access_management_screen.dart';
 import 'services/auth_service.dart';
 import 'services/tenant_service.dart';
@@ -97,6 +98,7 @@ class MyApp extends StatelessWidget {
         '/home': (context) => const MyHomePage(title: 'mawa Admin'),
         '/tenant': (context) => const TenantListScreen(),
         '/subscriptions': (context) => const SubscriptionPlansScreen(),
+        '/billing-modules': (context) => const BillingModulesScreen(),
         '/access': (context) => const AccessManagementScreen(),
       },
     );
