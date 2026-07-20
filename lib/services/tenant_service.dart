@@ -120,24 +120,24 @@ class TenantService {
 
   Future<void> syncTenantModules(String tenantId) async {
     final response = await _client.post(
-      Uri.parse('${AppConfig.apiBaseUrl}/tenant/$tenantId/modules/sync'),
+      Uri.parse('${AppConfig.apiBaseUrl}/billing/tenants/$tenantId/entitlements/sync-plan'),
       headers: await _getHeaders(),
     );
 
     if (response.statusCode != 200) {
-      throw Exception(response.body.isNotEmpty ? response.body : 'Failed to sync tenant modules');
+      throw Exception(response.body.isNotEmpty ? response.body : 'Failed to sync tenant billing modules');
     }
   }
 
   Future<void> setTenantModule(String tenantId, String moduleCode, bool enabled) async {
-    final action = enabled ? 'enable' : 'disable';
-    final response = await _client.post(
-      Uri.parse('${AppConfig.apiBaseUrl}/tenant/$tenantId/modules/$moduleCode/$action'),
+    final response = await _client.put(
+      Uri.parse('${AppConfig.apiBaseUrl}/billing/tenants/$tenantId/entitlements'),
       headers: await _getHeaders(),
+      body: jsonEncode({'moduleCode': moduleCode, 'enabled': enabled}),
     );
 
     if (response.statusCode != 200) {
-      throw Exception(response.body.isNotEmpty ? response.body : 'Failed to update tenant module');
+      throw Exception(response.body.isNotEmpty ? response.body : 'Failed to update tenant billing module');
     }
   }
 
@@ -204,68 +204,79 @@ class TenantService {
 
   Future<List<SubscriptionPlan>> getSubscriptionPlans() async {
     final response = await _client.get(
-      Uri.parse('${AppConfig.apiBaseUrl}/subscription/plans'),
+      Uri.parse('${AppConfig.apiBaseUrl}/billing/plans'),
       headers: await _getHeaders(),
     );
 
     if (response.statusCode == 200) {
       final data = jsonDecode(response.body) as List<dynamic>;
-      return data.map((json) => SubscriptionPlan.fromJson(json as Map<String, dynamic>)).toList();
+      return data
+          .map((item) => _subscriptionPlanFromBilling(Map<String, dynamic>.from(item as Map)))
+          .toList();
     }
-    throw Exception(response.body.isNotEmpty ? response.body : 'Failed to load subscription plans');
+    throw Exception(response.body.isNotEmpty ? response.body : 'Failed to load billing plans');
   }
 
   Future<SubscriptionPlan> saveSubscriptionPlan(SubscriptionPlan plan) async {
-    final uri = plan.code.isEmpty
-        ? Uri.parse('${AppConfig.apiBaseUrl}/subscription/plans')
-        : Uri.parse('${AppConfig.apiBaseUrl}/subscription/plans/${plan.code}');
-    final response = plan.code.isEmpty
-        ? await _client.post(uri, headers: await _getHeaders(), body: jsonEncode(plan.toJson()))
-        : await _client.put(uri, headers: await _getHeaders(), body: jsonEncode(plan.toJson()));
+    final create = plan.code.isEmpty;
+    final uri = create
+        ? Uri.parse('${AppConfig.apiBaseUrl}/billing/plans')
+        : Uri.parse('${AppConfig.apiBaseUrl}/billing/plans/${Uri.encodeComponent(plan.code)}');
+    final response = create
+        ? await _client.post(uri, headers: await _getHeaders(), body: jsonEncode(_subscriptionPlanToBilling(plan)))
+        : await _client.put(uri, headers: await _getHeaders(), body: jsonEncode(_subscriptionPlanToBilling(plan)));
 
     if (response.statusCode == 200 || response.statusCode == 201) {
-      return SubscriptionPlan.fromJson(jsonDecode(response.body));
+      return _subscriptionPlanFromBilling(Map<String, dynamic>.from(jsonDecode(response.body) as Map));
     }
-    throw Exception(response.body.isNotEmpty ? response.body : 'Failed to save subscription plan');
+    throw Exception(response.body.isNotEmpty ? response.body : 'Failed to save billing plan');
   }
 
   Future<TenantSubscription?> getTenantSubscription(String tenantId) async {
     final response = await _client.get(
-      Uri.parse('${AppConfig.apiBaseUrl}/tenant/$tenantId/subscription'),
+      Uri.parse('${AppConfig.apiBaseUrl}/billing/tenants/$tenantId/subscription'),
       headers: await _getHeaders(),
     );
 
     if (response.statusCode == 200) {
       if (response.body.isEmpty || response.body == 'null') return null;
-      return TenantSubscription.fromJson(jsonDecode(response.body) as Map<String, dynamic>);
+      return _tenantSubscriptionFromBilling(Map<String, dynamic>.from(jsonDecode(response.body) as Map));
     }
-    throw Exception(response.body.isNotEmpty ? response.body : 'Failed to load tenant subscription');
+    throw Exception(response.body.isNotEmpty ? response.body : 'Failed to load tenant billing subscription');
   }
 
   Future<TenantSubscription> saveTenantSubscription(String tenantId, TenantSubscription subscription) async {
     final response = await _client.put(
-      Uri.parse('${AppConfig.apiBaseUrl}/tenant/$tenantId/subscription'),
+      Uri.parse('${AppConfig.apiBaseUrl}/billing/tenants/$tenantId/subscription'),
       headers: await _getHeaders(),
-      body: jsonEncode(subscription.toJson()),
+      body: jsonEncode(_tenantSubscriptionToBilling(subscription)),
     );
 
     if (response.statusCode == 200) {
-      return TenantSubscription.fromJson(jsonDecode(response.body) as Map<String, dynamic>);
+      return _tenantSubscriptionFromBilling(Map<String, dynamic>.from(jsonDecode(response.body) as Map));
     }
-    throw Exception(response.body.isNotEmpty ? response.body : 'Failed to save tenant subscription');
+    throw Exception(response.body.isNotEmpty ? response.body : 'Failed to save tenant billing subscription');
   }
 
   Future<List<TenantModule>> getTenantModules(String tenantId) async {
     final response = await _client.get(
-      Uri.parse('${AppConfig.apiBaseUrl}/tenant/$tenantId/modules'),
+      Uri.parse('${AppConfig.apiBaseUrl}/billing/tenants/$tenantId/entitlements'),
       headers: await _getHeaders(),
     );
 
     if (response.statusCode == 200) {
       final data = jsonDecode(response.body) as List<dynamic>;
-      return data.map((json) => TenantModule.fromJson(json as Map<String, dynamic>)).toList();
+      return data.map((item) {
+        final json = Map<String, dynamic>.from(item as Map);
+        return TenantModule(
+          code: json['moduleCode']?.toString() ?? '',
+          name: json['moduleName']?.toString() ?? json['moduleCode']?.toString() ?? '',
+          enabled: json['enabled'] == true,
+          description: null,
+        );
+      }).toList();
     }
-    throw Exception(response.body.isNotEmpty ? response.body : 'Failed to load tenant modules');
+    throw Exception(response.body.isNotEmpty ? response.body : 'Failed to load tenant billing modules');
   }
 
   Future<List<TenantActivityLog>> getTenantActivity(String tenantId) async {
@@ -392,5 +403,80 @@ class TenantService {
     );
     if (response.statusCode != 200) throw Exception(response.body.isNotEmpty ? response.body : 'Failed to retry print job');
   }
+
+
+  SubscriptionPlan _subscriptionPlanFromBilling(Map<String, dynamic> json) {
+    int? cents(dynamic value) {
+      if (value == null) return null;
+      final amount = value is num ? value.toDouble() : double.tryParse(value.toString());
+      return amount == null ? null : (amount * 100).round();
+    }
+
+    return SubscriptionPlan(
+      code: json['code']?.toString() ?? '',
+      name: json['name']?.toString() ?? '',
+      description: json['description']?.toString(),
+      status: json['status']?.toString() ?? 'ACTIVE',
+      currency: json['currency']?.toString() ?? 'ZAR',
+      monthlyPriceCents: cents(json['baseMonthlyAmount']),
+      annualPriceCents: cents(json['annualBaseAmount']),
+      maxUsers: int.tryParse(json['maxUsers']?.toString() ?? ''),
+      maxBranches: int.tryParse(json['maxBranches']?.toString() ?? ''),
+      maxDevices: int.tryParse(json['maxDevices']?.toString() ?? ''),
+      displayOrder: int.tryParse(json['displayOrder']?.toString() ?? ''),
+    );
+  }
+
+  Map<String, dynamic> _subscriptionPlanToBilling(SubscriptionPlan plan) => {
+        'code': plan.code,
+        'name': plan.name,
+        'description': plan.description,
+        'currency': plan.currency,
+        'baseMonthlyAmount': (plan.monthlyPriceCents ?? 0) / 100,
+        'annualBaseAmount': (plan.annualPriceCents ?? 0) / 100,
+        'status': plan.status,
+        'taxCode': 'ZA_VAT',
+        'maxUsers': plan.maxUsers,
+        'maxBranches': plan.maxBranches,
+        'maxDevices': plan.maxDevices,
+        'displayOrder': plan.displayOrder,
+      };
+
+  TenantSubscription _tenantSubscriptionFromBilling(Map<String, dynamic> json) {
+    int? cents(dynamic value) {
+      if (value == null) return null;
+      final amount = value is num ? value.toDouble() : double.tryParse(value.toString());
+      return amount == null ? null : (amount * 100).round();
+    }
+
+    return TenantSubscription(
+      id: json['id']?.toString(),
+      tenantId: json['tenantId']?.toString(),
+      planCode: json['planCode']?.toString() ?? '',
+      planName: json['planName']?.toString(),
+      status: json['status']?.toString() ?? 'ACTIVE',
+      billingCycle: json['billingCycle']?.toString() ?? 'MONTHLY',
+      currency: json['currency']?.toString() ?? 'ZAR',
+      amountCents: cents(json['amountOverride']),
+      startDate: json['startDate']?.toString(),
+      trialEndsAt: json['trialEndDate']?.toString(),
+      nextBillingDate: json['nextBillingDate']?.toString(),
+      endDate: json['endDate']?.toString(),
+      notes: json['notes']?.toString(),
+    );
+  }
+
+  Map<String, dynamic> _tenantSubscriptionToBilling(TenantSubscription subscription) => {
+        'planCode': subscription.planCode,
+        'status': subscription.status,
+        'billingCycle': subscription.billingCycle,
+        'currency': subscription.currency,
+        'amountOverride': subscription.amountCents == null ? null : subscription.amountCents! / 100,
+        'startDate': subscription.startDate,
+        'trialEndDate': subscription.trialEndsAt,
+        'nextBillingDate': subscription.nextBillingDate,
+        'endDate': subscription.endDate,
+        'notes': subscription.notes,
+      };
 
 }
