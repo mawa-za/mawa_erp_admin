@@ -3,6 +3,8 @@ import 'package:google_fonts/google_fonts.dart';
 import 'screens/login_screen.dart';
 import 'screens/tenant_list_screen.dart';
 import 'screens/subscription_plans_screen.dart';
+import 'screens/billing_modules_screen.dart';
+import 'screens/billing_management_screen.dart';
 import 'screens/access_management_screen.dart';
 import 'services/auth_service.dart';
 import 'services/tenant_service.dart';
@@ -97,6 +99,8 @@ class MyApp extends StatelessWidget {
         '/home': (context) => const MyHomePage(title: 'mawa Admin'),
         '/tenant': (context) => const TenantListScreen(),
         '/subscriptions': (context) => const SubscriptionPlansScreen(),
+        '/billing-modules': (context) => const BillingModulesScreen(),
+        '/billing': (context) => const BillingManagementScreen(),
         '/access': (context) => const AccessManagementScreen(),
       },
     );
@@ -122,7 +126,7 @@ class MyHomePage extends StatelessWidget {
             Text(title),
             const SizedBox(width: 8),
             Text(
-              'v1.0.4+5 (${AppConfig.environment.name})',
+              'v1.0.5+6 (${AppConfig.environment.name})',
               style: theme.textTheme.labelSmall?.copyWith(
                 color: Colors.grey.shade500,
                 fontWeight: FontWeight.normal,
@@ -191,11 +195,20 @@ class MyHomePage extends StatelessWidget {
                 color: const Color(0xFF1E88E5),
                 onTap: () => Navigator.pushNamed(context, '/tenant'),
               ),
-            if (can('TENANT_SUBSCRIPTIONS'))
+            if (can('BILLING_MANAGEMENT'))
+              _buildMenuCard(
+                context,
+                title: 'Billing',
+                subtitle: 'Plans, subscriptions and invoices',
+                icon: Icons.account_balance_wallet_rounded,
+                color: Colors.purple,
+                onTap: () => Navigator.pushNamed(context, '/billing'),
+              )
+            else if (can('TENANT_SUBSCRIPTIONS'))
               _buildMenuCard(
                 context,
                 title: 'Subscriptions',
-                subtitle: 'Plans and packages',
+                subtitle: 'Legacy plan maintenance',
                 icon: Icons.workspace_premium_rounded,
                 color: Colors.purple,
                 onTap: () => Navigator.pushNamed(context, '/subscriptions'),
