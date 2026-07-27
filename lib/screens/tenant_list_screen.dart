@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../models/tenant.dart';
 import '../services/tenant_service.dart';
+import '../models/industry_profile.dart';
 import 'tenant_detail_screen.dart';
 
 class TenantListScreen extends StatefulWidget {
@@ -148,7 +149,12 @@ class _TenantListScreenState extends State<TenantListScreen> {
                               ),
                               const SizedBox(height: 2),
                               Text(
-                                [tenant.host, if (tenant.subscriptionPlanCode != null) tenant.subscriptionPlanCode!].join(' • '),
+                                [
+                                  tenant.host,
+                                  if (tenant.primaryIndustryCode != null && tenant.primaryIndustryCode!.isNotEmpty)
+                                    _industryLabel(tenant.primaryIndustryCode!),
+                                  if (tenant.subscriptionPlanCode != null) tenant.subscriptionPlanCode!,
+                                ].join(' • '),
                                 style: TextStyle(color: Colors.grey.shade600, fontSize: 13),
                               ),
                             ],
@@ -191,6 +197,13 @@ class _TenantListScreenState extends State<TenantListScreen> {
     );
   }
 
+  String _industryLabel(String code) => code
+      .toLowerCase()
+      .split('_')
+      .where((part) => part.isNotEmpty)
+      .map((part) => '${part[0].toUpperCase()}${part.substring(1)}')
+      .join(' ');
+
   void _showCreateTenantDialog() {
     showDialog(
       context: context,
@@ -221,6 +234,27 @@ class _CreateTenantDialogState extends State<CreateTenantDialog> {
   final _dbPassController = TextEditingController();
   String _status = 'ACTIVE';
   bool _isLoading = false;
+  late Future<List<IndustryProfile>> _profilesFuture;
+  String _primaryIndustryCode = 'GENERAL_CUSTOM';
+  final Set<String> _additionalIndustryCodes = <String>{};
+
+  @override
+  void initState() {
+    super.initState();
+    _profilesFuture = TenantService().getIndustryProfiles(activeOnly: true);
+  }
+
+  @override
+  void dispose() {
+    _idController.dispose();
+    _nameController.dispose();
+    _hostController.dispose();
+    _urlController.dispose();
+    _dbUrlController.dispose();
+    _dbUserController.dispose();
+    _dbPassController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -257,6 +291,81 @@ class _CreateTenantDialogState extends State<CreateTenantDialog> {
                       .map((s) => DropdownMenuItem(value: s, child: Text(s)))
                       .toList(),
                   onChanged: (v) => setState(() => _status = v!),
+                ),
+                const SizedBox(height: 24),
+                _buildSectionTitle('Industry Profile'),
+                const SizedBox(height: 8),
+                Text(
+                  'The primary industry determines the default homepage terminology and workcenter priority. Additional industries add their core workcenters.',
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(color: Colors.grey.shade600),
+                ),
+                const SizedBox(height: 14),
+                FutureBuilder<List<IndustryProfile>>(
+                  future: _profilesFuture,
+                  builder: (context, snapshot) {
+                    if (snapshot.connectionState == ConnectionState.waiting) {
+                      return const LinearProgressIndicator();
+                    }
+                    if (snapshot.hasError) {
+                      return Row(
+                        children: [
+                          const Expanded(child: Text('Industry profiles could not be loaded.')),
+                          TextButton(
+                            onPressed: () => setState(() => _profilesFuture = TenantService().getIndustryProfiles(activeOnly: true)),
+                            child: const Text('Retry'),
+                          ),
+                        ],
+                      );
+                    }
+                    final profiles = snapshot.data ?? const <IndustryProfile>[];
+                    if (profiles.isEmpty) return const Text('No active industry profiles are configured.');
+                    if (!profiles.any((item) => item.code == _primaryIndustryCode)) {
+                      _primaryIndustryCode = profiles.first.code;
+                    }
+                    return Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        DropdownButtonFormField<String>(
+                          value: _primaryIndustryCode,
+                          decoration: const InputDecoration(
+                            labelText: 'Primary Industry',
+                            prefixIcon: Icon(Icons.domain_rounded),
+                          ),
+                          items: profiles
+                              .map((profile) => DropdownMenuItem(
+                                    value: profile.code,
+                                    child: Text(profile.name),
+                                  ))
+                              .toList(),
+                          onChanged: (value) => setState(() {
+                            _primaryIndustryCode = value ?? profiles.first.code;
+                            _additionalIndustryCodes.remove(_primaryIndustryCode);
+                          }),
+                        ),
+                        const SizedBox(height: 14),
+                        Text('Additional industries', style: Theme.of(context).textTheme.labelLarge),
+                        const SizedBox(height: 8),
+                        Wrap(
+                          spacing: 8,
+                          runSpacing: 8,
+                          children: profiles
+                              .where((profile) => profile.code != _primaryIndustryCode)
+                              .map((profile) => FilterChip(
+                                    label: Text(profile.name),
+                                    selected: _additionalIndustryCodes.contains(profile.code),
+                                    onSelected: (selected) => setState(() {
+                                      if (selected) {
+                                        _additionalIndustryCodes.add(profile.code);
+                                      } else {
+                                        _additionalIndustryCodes.remove(profile.code);
+                                      }
+                                    }),
+                                  ))
+                              .toList(),
+                        ),
+                      ],
+                    );
+                  },
                 ),
                 const SizedBox(height: 24),
                 _buildSectionTitle('Database Configuration'),
@@ -330,6 +439,8 @@ class _CreateTenantDialogState extends State<CreateTenantDialog> {
           databaseUrl: _dbUrlController.text.isEmpty ? null : _dbUrlController.text,
           databaseUsername: _dbUserController.text.isEmpty ? null : _dbUserController.text,
           databasePassword: _dbPassController.text.isEmpty ? null : _dbPassController.text,
+          primaryIndustryCode: _primaryIndustryCode,
+          additionalIndustryCodes: _additionalIndustryCodes.toList(),
         );
         await TenantService().createTenant(request);
         if (mounted) Navigator.pop(context, true);
