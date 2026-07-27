@@ -4,6 +4,7 @@ import '../models/billing.dart';
 import '../models/tenant.dart';
 import '../services/billing_service.dart';
 import '../services/tenant_service.dart';
+import 'package:mawa_erp_admin/utils/app_error.dart';
 
 class BillingManagementScreen extends StatefulWidget {
   const BillingManagementScreen({super.key});
@@ -248,7 +249,7 @@ class _BillingManagementScreenState extends State<BillingManagementScreen> {
           future: _tenantsFuture,
           builder: (context, snapshot) {
             if (snapshot.connectionState == ConnectionState.waiting) return const LinearProgressIndicator();
-            if (snapshot.hasError) return Text('Unable to load tenants: ${snapshot.error}');
+            if (snapshot.hasError) return Text(friendlyErrorMessage('Unable to load tenants: ${snapshot.error}'));
             final tenants = snapshot.data ?? const [];
             if (tenants.isEmpty) return const Text('No tenants are configured.');
             return Row(
@@ -1395,7 +1396,7 @@ class _BillingManagementScreenState extends State<BillingManagementScreen> {
             const SizedBox(height: 8),
             Text(title, style: const TextStyle(fontWeight: FontWeight.bold)),
             const SizedBox(height: 6),
-            Text('$error', textAlign: TextAlign.center),
+            Text(friendlyErrorMessage('$error'), textAlign: TextAlign.center),
             const SizedBox(height: 12),
             OutlinedButton.icon(onPressed: retry, icon: const Icon(Icons.refresh_rounded), label: const Text('Retry')),
           ]),
@@ -1421,7 +1422,7 @@ class _BillingManagementScreenState extends State<BillingManagementScreen> {
 
   void _showError(Object error) {
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('$error'), backgroundColor: Colors.red.shade700));
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(friendlyErrorMessage('$error')), backgroundColor: Colors.red.shade700));
   }
 
   String _money(double amount) => 'R ${amount.toStringAsFixed(2)}';

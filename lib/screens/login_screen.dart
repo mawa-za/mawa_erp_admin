@@ -37,7 +37,8 @@ class _LoginScreenState extends State<LoginScreen> {
       Navigator.of(context).pushReplacementNamed('/home');
     } else {
       setState(() {
-        _errorMessage = 'Invalid username or password. Please try again.';
+        _errorMessage = _authService.lastLoginError ??
+            'The username or password is incorrect.';
       });
     }
   }

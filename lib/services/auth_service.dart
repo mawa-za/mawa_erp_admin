@@ -4,6 +4,7 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:mawa_erp_admin/utils/app_error.dart';
 
 import '../config.dart';
 
@@ -18,8 +19,10 @@ class AuthService {
 
   Completer<bool>? _refreshCompleter;
   Timer? _keepAliveTimer;
+  String? lastLoginError;
 
   Future<bool> login(String username, String password) async {
+    lastLoginError = null;
     try {
       final response = await http
           .post(
@@ -32,10 +35,22 @@ class AuthService {
           )
           .timeout(const Duration(seconds: 45));
 
-      if (response.statusCode != 200) return false;
+      if (response.statusCode != 200) {
+        lastLoginError = friendlyErrorMessage(
+          response.body,
+          statusCode: response.statusCode,
+          fallback: response.statusCode == 401 || response.statusCode == 403
+              ? 'The username or password is incorrect.'
+              : 'We could not sign you in. Please try again.',
+        );
+        return false;
+      }
 
       final tokens = _readTokenResponse(response.body);
-      if (tokens.accessToken.isEmpty) return false;
+      if (tokens.accessToken.isEmpty) {
+        lastLoginError = 'The sign-in response was incomplete. Please try again.';
+        return false;
+      }
 
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString(_accessTokenKey, tokens.accessToken);
@@ -47,6 +62,10 @@ class AuthService {
       return true;
     } catch (error) {
       debugPrint('Admin login failed: $error');
+      lastLoginError = friendlyErrorMessage(
+        error,
+        fallback: 'We could not sign you in. Please try again.',
+      );
       return false;
     }
   }
