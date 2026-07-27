@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../models/platform_management.dart';
 import '../services/tenant_service.dart';
+import 'package:mawa_erp_admin/utils/app_error.dart';
 
 class SubscriptionPlansScreen extends StatefulWidget {
   const SubscriptionPlansScreen({super.key});
@@ -43,7 +44,7 @@ class _SubscriptionPlansScreenState extends State<SubscriptionPlansScreen> {
             return const Center(child: CircularProgressIndicator());
           }
           if (snapshot.hasError) {
-            return Center(child: Text('Failed to load plans: ${snapshot.error}'));
+            return Center(child: Text(friendlyErrorMessage('Failed to load plans: ${snapshot.error}')));
           }
           final allPlans = List<SubscriptionPlan>.from(snapshot.data ?? const [])
             ..sort((a, b) {
@@ -235,7 +236,7 @@ class _SubscriptionPlansScreenState extends State<SubscriptionPlansScreen> {
                           _refresh();
                         } catch (e) {
                           if (!mounted) return;
-                          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Save failed: $e'), backgroundColor: Colors.red));
+                          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(friendlyErrorMessage('Save failed: $e')), backgroundColor: Colors.red));
                           setDialogState(() => isSaving = false);
                         }
                       },

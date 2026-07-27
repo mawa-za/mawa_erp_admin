@@ -13,6 +13,7 @@ import 'models/access_management.dart';
 import 'models/platform_management.dart';
 import 'config.dart';
 import 'theme/admin_theme.dart';
+import 'package:mawa_erp_admin/utils/app_error.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -97,7 +98,10 @@ class MyHomePage extends StatelessWidget {
                         ),
                         const SizedBox(height: 8),
                         Text(
-                          '${accessSnapshot.error ?? 'No profile returned'}',
+                          friendlyErrorMessage(
+                            accessSnapshot.error,
+                            fallback: 'The access profile could not be loaded. Please try again.',
+                          ),
                           textAlign: TextAlign.center,
                           style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                                 color: AdminDesign.muted,
