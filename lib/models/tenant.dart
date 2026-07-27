@@ -7,6 +7,8 @@ class Tenant {
   final String status;
   final String? subscriptionPlanCode;
   final String? subscriptionStatus;
+  final String? primaryIndustryCode;
+  final List<String> additionalIndustryCodes;
 
   Tenant({
     required this.id,
@@ -17,18 +19,24 @@ class Tenant {
     required this.status,
     this.subscriptionPlanCode,
     this.subscriptionStatus,
+    this.primaryIndustryCode,
+    this.additionalIndustryCodes = const [],
   });
 
   factory Tenant.fromJson(Map<String, dynamic> json) {
     return Tenant(
-      id: json['id'],
-      name: json['name'],
-      host: json['host'],
-      url: json['url'],
-      erpAppUrl: json['erpAppUrl'] ?? json['url'],
-      status: json['status'],
-      subscriptionPlanCode: json['subscriptionPlanCode'],
-      subscriptionStatus: json['subscriptionStatus'],
+      id: (json['id'] ?? '').toString(),
+      name: (json['name'] ?? '').toString(),
+      host: (json['host'] ?? '').toString(),
+      url: json['url']?.toString(),
+      erpAppUrl: (json['erpAppUrl'] ?? json['url'])?.toString(),
+      status: (json['status'] ?? 'ACTIVE').toString(),
+      subscriptionPlanCode: json['subscriptionPlanCode']?.toString(),
+      subscriptionStatus: json['subscriptionStatus']?.toString(),
+      primaryIndustryCode: json['primaryIndustryCode']?.toString(),
+      additionalIndustryCodes: (json['additionalIndustryCodes'] as List<dynamic>? ?? const [])
+          .map((item) => item.toString())
+          .toList(),
     );
   }
 
@@ -42,6 +50,8 @@ class Tenant {
       'status': status,
       'subscriptionPlanCode': subscriptionPlanCode,
       'subscriptionStatus': subscriptionStatus,
+      'primaryIndustryCode': primaryIndustryCode,
+      'additionalIndustryCodes': additionalIndustryCodes,
     };
   }
 }
@@ -58,6 +68,8 @@ class CreateTenantRequest {
   final String? databaseUrl;
   final String? databaseUsername;
   final String? databasePassword;
+  final String primaryIndustryCode;
+  final List<String> additionalIndustryCodes;
 
   CreateTenantRequest({
     this.id,
@@ -71,6 +83,8 @@ class CreateTenantRequest {
     this.databaseUrl,
     this.databaseUsername,
     this.databasePassword,
+    this.primaryIndustryCode = 'GENERAL_CUSTOM',
+    this.additionalIndustryCodes = const [],
   });
 
   Map<String, dynamic> toJson() {
@@ -86,6 +100,8 @@ class CreateTenantRequest {
       'database_url': databaseUrl,
       'database_username': databaseUsername,
       'database_password': databasePassword,
+      'primaryIndustryCode': primaryIndustryCode,
+      'additionalIndustryCodes': additionalIndustryCodes,
     };
   }
 }

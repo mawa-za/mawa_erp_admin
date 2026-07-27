@@ -6,6 +6,7 @@ import '../models/tenant.dart';
 import '../services/tenant_service.dart';
 import '../models/tenant_property.dart';
 import '../models/platform_management.dart';
+import '../models/industry_profile.dart';
 
 class TenantDetailScreen extends StatefulWidget {
   final Tenant tenant;
@@ -26,6 +27,8 @@ class _TenantDetailScreenState extends State<TenantDetailScreen> {
   late Future<List<TenantSchedule>> _schedulesFuture;
   late Future<List<SubscriptionPlan>> _plansFuture;
   late Future<Map<String, dynamic>> _printingFuture;
+  late Future<TenantIndustryProfile> _industryProfileFuture;
+  late Future<List<IndustryProfile>> _industryCatalogueFuture;
   int _selectedSection = 0;
   final TextEditingController _propertySearchController = TextEditingController();
   final TextEditingController _activitySearchController = TextEditingController();
@@ -33,6 +36,7 @@ class _TenantDetailScreenState extends State<TenantDetailScreen> {
 
   static const List<_TenantSection> _sections = [
     _TenantSection('Overview', Icons.dashboard_outlined),
+    _TenantSection('Industry & Experience', Icons.domain_outlined),
     _TenantSection('Subscription & Modules', Icons.extension_outlined),
     _TenantSection('Integration', Icons.hub_outlined),
     _TenantSection('Data & Security', Icons.admin_panel_settings_outlined),
@@ -56,6 +60,8 @@ class _TenantDetailScreenState extends State<TenantDetailScreen> {
       _schedulesFuture = _tenantService.getTenantSchedules(_tenant.id);
       _plansFuture = _tenantService.getSubscriptionPlans();
       _printingFuture = _tenantService.getTenantPosPrinting(_tenant.id);
+      _industryProfileFuture = _tenantService.getTenantIndustryProfile(_tenant.id);
+      _industryCatalogueFuture = _tenantService.getIndustryProfiles();
     });
   }
 
@@ -162,27 +168,30 @@ class _TenantDetailScreenState extends State<TenantDetailScreen> {
   Widget _buildSelectedSection() {
     switch (_selectedSection) {
       case 1:
+        return _buildSectionScroll([_buildIndustryExperienceCard()]);
+      case 2:
         return _buildSectionScroll([
           _buildSubscriptionCard(),
           _buildModuleManagementCard(),
         ]);
-      case 2:
+      case 3:
         return _buildSectionScroll([
           _buildErpIntegrationCard(),
           _buildSecretManagerCard(),
         ]);
-      case 3:
+      case 4:
         return _buildSectionScroll([
           _buildDataMaintenanceCard(),
           _buildPropertiesCard(),
         ]);
-      case 4:
-        return _buildSectionScroll([_buildActivityCard()]);
       case 5:
+        return _buildSectionScroll([_buildActivityCard()]);
+      case 6:
         return _buildSectionScroll([_buildPosPrintingCard()]);
       default:
         return _buildSectionScroll([
           _buildInfoCard(),
+          _buildIndustryExperienceCard(compact: true),
           _buildErpIntegrationCard(),
         ]);
     }
@@ -241,6 +250,249 @@ class _TenantDetailScreenState extends State<TenantDetailScreen> {
         ),
       ),
     );
+  }
+
+  Widget _buildIndustryExperienceCard({bool compact = false}) {
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: FutureBuilder<TenantIndustryProfile>(
+          future: _industryProfileFuture,
+          builder: (context, snapshot) {
+            final header = Row(
+              children: [
+                Icon(Icons.domain_rounded, color: Theme.of(context).colorScheme.primary),
+                const SizedBox(width: 8),
+                const Expanded(
+                  child: Text(
+                    'Industry & Tenant Experience',
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                  ),
+                ),
+                OutlinedButton.icon(
+                  onPressed: snapshot.hasData ? () => _showIndustryProfileDialog(snapshot.data!) : null,
+                  icon: const Icon(Icons.edit_rounded, size: 18),
+                  label: const Text('Configure'),
+                ),
+              ],
+            );
+            if (snapshot.connectionState == ConnectionState.waiting) {
+              return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [header, const Divider(), const LinearProgressIndicator()]);
+            }
+            if (snapshot.hasError || !snapshot.hasData) {
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  header,
+                  const Divider(),
+                  Text('Failed to load industry profile: ${snapshot.error}', style: const TextStyle(color: Colors.red)),
+                ],
+              );
+            }
+            final profile = snapshot.data!;
+            final experience = profile.experience;
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                header,
+                const Divider(),
+                Wrap(
+                  spacing: 12,
+                  runSpacing: 12,
+                  children: [
+                    _buildMiniMetric('Primary industry', profile.primaryIndustry.name),
+                    _buildMiniMetric(
+                      'Additional industries',
+                      profile.additionalIndustries.isEmpty
+                          ? 'None'
+                          : profile.additionalIndustries.map((item) => item.name).join(', '),
+                    ),
+                    _buildMiniMetric(
+                      'Homepage groups',
+                      experience.sections.fold<int>(0, (total, section) => total + section.groups.length).toString(),
+                    ),
+                  ],
+                ),
+                if (!compact) ...[
+                  const SizedBox(height: 18),
+                  Text('ERP homepage preview', style: Theme.of(context).textTheme.titleMedium),
+                  const SizedBox(height: 6),
+                  Text(
+                    'Only workcenters assigned to each user role will be shown. Industry profiles control presentation, terminology and grouping; they do not delete business data.',
+                    style: TextStyle(color: Colors.grey.shade700),
+                  ),
+                  const SizedBox(height: 12),
+                  ...experience.sections.map((section) => Container(
+                        width: double.infinity,
+                        margin: const EdgeInsets.only(bottom: 12),
+                        padding: const EdgeInsets.all(14),
+                        decoration: BoxDecoration(
+                          color: Colors.grey.shade50,
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: Colors.grey.shade200),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(section.title, style: const TextStyle(fontWeight: FontWeight.bold)),
+                            if (section.description.isNotEmpty) ...[
+                              const SizedBox(height: 3),
+                              Text(section.description, style: TextStyle(color: Colors.grey.shade600, fontSize: 12)),
+                            ],
+                            const SizedBox(height: 10),
+                            Wrap(
+                              spacing: 8,
+                              runSpacing: 8,
+                              children: section.groups
+                                  .map((group) => Chip(
+                                        avatar: const Icon(Icons.apps_rounded, size: 16),
+                                        label: Text('${group.title} (${group.workcenters.length})'),
+                                      ))
+                                  .toList(),
+                            ),
+                          ],
+                        ),
+                      )),
+                ],
+              ],
+            );
+          },
+        ),
+      ),
+    );
+  }
+
+  Future<void> _showIndustryProfileDialog(TenantIndustryProfile current) async {
+    late final List<IndustryProfile> allProfiles;
+    try {
+      allProfiles = await _industryCatalogueFuture;
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Industry profiles could not be loaded: $error'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+    if (!mounted) return;
+    final assignedCodes = <String>{
+      current.primaryIndustry.code,
+      ...current.additionalIndustries.map((item) => item.code),
+    };
+    final catalogue = allProfiles
+        .where((item) => item.status.toUpperCase() == 'ACTIVE' || assignedCodes.contains(item.code))
+        .toList();
+    if (catalogue.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('No industry profiles are available.')),
+      );
+      return;
+    }
+    var primaryCode = catalogue.any((item) => item.code == current.primaryIndustry.code)
+        ? current.primaryIndustry.code
+        : catalogue.first.code;
+    final additionalCodes = current.additionalIndustries.map((item) => item.code).toSet();
+    var saving = false;
+
+    final saved = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (context, setDialogState) {
+          final availableAdditional = catalogue.where((item) => item.code != primaryCode).toList();
+          return AlertDialog(
+            title: const Text('Configure Tenant Industries'),
+            content: SizedBox(
+              width: 720,
+              child: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'The primary industry controls the tenant’s default terminology and highest-priority workcenters. Additional industries merge their relevant workcenters into the same experience.',
+                    ),
+                    const SizedBox(height: 18),
+                    DropdownButtonFormField<String>(
+                      value: primaryCode,
+                      isExpanded: true,
+                      decoration: const InputDecoration(labelText: 'Primary industry'),
+                      items: catalogue
+                          .map((item) => DropdownMenuItem(value: item.code, child: Text(item.name)))
+                          .toList(),
+                      onChanged: saving
+                          ? null
+                          : (value) => setDialogState(() {
+                                primaryCode = value ?? primaryCode;
+                                additionalCodes.remove(primaryCode);
+                              }),
+                    ),
+                    const SizedBox(height: 18),
+                    Text('Additional industries', style: Theme.of(context).textTheme.titleSmall),
+                    const SizedBox(height: 8),
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: availableAdditional
+                          .map((item) => FilterChip(
+                                label: Text(item.name),
+                                selected: additionalCodes.contains(item.code),
+                                onSelected: saving
+                                    ? null
+                                    : (selected) => setDialogState(() {
+                                          if (selected) {
+                                            additionalCodes.add(item.code);
+                                          } else {
+                                            additionalCodes.remove(item.code);
+                                          }
+                                        }),
+                              ))
+                          .toList(),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            actions: [
+              TextButton(onPressed: saving ? null : () => Navigator.pop(dialogContext, false), child: const Text('Cancel')),
+              FilledButton.icon(
+                onPressed: saving
+                    ? null
+                    : () async {
+                        setDialogState(() => saving = true);
+                        try {
+                          await _tenantService.saveTenantIndustryProfile(
+                            _tenant.id,
+                            primaryIndustryCode: primaryCode,
+                            additionalIndustryCodes: additionalCodes.toList(),
+                          );
+                          if (dialogContext.mounted) Navigator.pop(dialogContext, true);
+                        } catch (error) {
+                          setDialogState(() => saving = false);
+                          if (dialogContext.mounted) {
+                            ScaffoldMessenger.of(dialogContext).showSnackBar(
+                              SnackBar(content: Text('Industry profile could not be saved: $error'), backgroundColor: Colors.red),
+                            );
+                          }
+                        }
+                      },
+                icon: saving
+                    ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2))
+                    : const Icon(Icons.save_rounded),
+                label: const Text('Save Industries'),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+    if (saved == true && mounted) {
+      _refreshAll();
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Tenant industry experience updated. ERP users will see it after configuration refresh.')),
+      );
+    }
   }
 
   Widget _buildSubscriptionCard() {
@@ -1104,6 +1356,8 @@ class _TenantDetailScreenState extends State<TenantDetailScreen> {
                             url: urlController.text.trim(),
                             erpAppUrl: urlController.text.trim(),
                             status: status,
+                            primaryIndustryCode: _tenant.primaryIndustryCode,
+                            additionalIndustryCodes: _tenant.additionalIndustryCodes,
                           ),
                         );
                         if (!mounted) return;

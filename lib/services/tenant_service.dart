@@ -4,6 +4,7 @@ import '../models/tenant.dart';
 import '../models/tenant_property.dart';
 import '../models/erp_handoff.dart';
 import '../models/platform_management.dart';
+import '../models/industry_profile.dart';
 import 'authenticated_http_client.dart';
 
 class TenantService {
@@ -46,12 +47,93 @@ class TenantService {
           status: request.status,
           subscriptionPlanCode: request.subscriptionPlanCode,
           subscriptionStatus: request.subscriptionStatus,
+          primaryIndustryCode: request.primaryIndustryCode,
+          additionalIndustryCodes: request.additionalIndustryCodes,
         );
       }
       return Tenant.fromJson(jsonDecode(response.body));
     } else {
       throw Exception(response.body.isNotEmpty ? response.body : 'Failed to create tenant');
     }
+  }
+
+  Future<List<IndustryProfile>> getIndustryProfiles({bool activeOnly = false}) async {
+    final uri = Uri.parse('${AppConfig.apiBaseUrl}/industry-profile').replace(
+      queryParameters: {'activeOnly': activeOnly.toString()},
+    );
+    final response = await _client.get(uri, headers: await _getHeaders());
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body) as List<dynamic>;
+      return data
+          .map((item) => IndustryProfile.fromJson(Map<String, dynamic>.from(item as Map)))
+          .toList();
+    }
+    throw Exception(response.body.isNotEmpty ? response.body : 'Failed to load industry profiles');
+  }
+
+  Future<IndustryProfile> getIndustryProfile(String code) async {
+    final response = await _client.get(
+      Uri.parse('${AppConfig.apiBaseUrl}/industry-profile/$code'),
+      headers: await _getHeaders(),
+    );
+    if (response.statusCode == 200) {
+      return IndustryProfile.fromJson(jsonDecode(response.body) as Map<String, dynamic>);
+    }
+    throw Exception(response.body.isNotEmpty ? response.body : 'Failed to load industry profile');
+  }
+
+  Future<IndustryProfile> saveIndustryProfile(IndustryProfile profile, {bool create = false}) async {
+    final uri = create
+        ? Uri.parse('${AppConfig.apiBaseUrl}/industry-profile')
+        : Uri.parse('${AppConfig.apiBaseUrl}/industry-profile/${profile.code}');
+    final response = create
+        ? await _client.post(uri, headers: await _getHeaders(), body: jsonEncode(profile.toJson()))
+        : await _client.put(uri, headers: await _getHeaders(), body: jsonEncode(profile.toJson()));
+    if (response.statusCode == 200 || response.statusCode == 201) {
+      return IndustryProfile.fromJson(jsonDecode(response.body) as Map<String, dynamic>);
+    }
+    throw Exception(response.body.isNotEmpty ? response.body : 'Failed to save industry profile');
+  }
+
+  Future<TenantIndustryProfile> getTenantIndustryProfile(String tenantId) async {
+    final response = await _client.get(
+      Uri.parse('${AppConfig.apiBaseUrl}/tenant/$tenantId/industry-profile'),
+      headers: await _getHeaders(),
+    );
+    if (response.statusCode == 200) {
+      return TenantIndustryProfile.fromJson(jsonDecode(response.body) as Map<String, dynamic>);
+    }
+    throw Exception(response.body.isNotEmpty ? response.body : 'Failed to load tenant industry profile');
+  }
+
+  Future<TenantIndustryProfile> saveTenantIndustryProfile(
+    String tenantId, {
+    required String primaryIndustryCode,
+    required List<String> additionalIndustryCodes,
+  }) async {
+    final response = await _client.put(
+      Uri.parse('${AppConfig.apiBaseUrl}/tenant/$tenantId/industry-profile'),
+      headers: await _getHeaders(),
+      body: jsonEncode({
+        'primaryIndustryCode': primaryIndustryCode,
+        'additionalIndustryCodes': additionalIndustryCodes,
+      }),
+    );
+    if (response.statusCode == 200) {
+      return TenantIndustryProfile.fromJson(jsonDecode(response.body) as Map<String, dynamic>);
+    }
+    throw Exception(response.body.isNotEmpty ? response.body : 'Failed to update tenant industry profile');
+  }
+
+  Future<TenantExperience> getTenantExperiencePreview(String tenantId) async {
+    final response = await _client.get(
+      Uri.parse('${AppConfig.apiBaseUrl}/tenant/$tenantId/experience-preview'),
+      headers: await _getHeaders(),
+    );
+    if (response.statusCode == 200) {
+      return TenantExperience.fromJson(jsonDecode(response.body) as Map<String, dynamic>);
+    }
+    throw Exception(response.body.isNotEmpty ? response.body : 'Failed to load tenant experience preview');
   }
 
   Future<Map<String, String>> getTenantProperties(String tenantId) async {
