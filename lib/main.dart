@@ -5,6 +5,7 @@ import 'screens/subscription_plans_screen.dart';
 import 'screens/billing_modules_screen.dart';
 import 'screens/billing_management_screen.dart';
 import 'screens/access_management_screen.dart';
+import 'screens/industry_profiles_screen.dart';
 import 'services/auth_service.dart';
 import 'services/tenant_service.dart';
 import 'services/access_management_service.dart';
@@ -52,6 +53,7 @@ class MyApp extends StatelessWidget {
         '/billing-modules': (context) => const BillingModulesScreen(),
         '/billing': (context) => const BillingManagementScreen(),
         '/access': (context) => const AccessManagementScreen(),
+        '/industries': (context) => const IndustryProfilesScreen(),
       },
     );
   }
@@ -124,6 +126,15 @@ class MyHomePage extends StatelessWidget {
               icon: Icons.business_rounded,
               colour: AdminDesign.red,
               route: '/tenant',
+            ),
+          if (can('INDUSTRY_PROFILE_MANAGEMENT'))
+            const _AdminModule(
+              title: 'Industry profiles',
+              description:
+                  'Define industry experiences, terminology and workcenter grouping defaults.',
+              icon: Icons.domain_add_rounded,
+              colour: Color(0xFF2563EB),
+              route: '/industries',
             ),
           if (can('BILLING_MANAGEMENT'))
             const _AdminModule(
