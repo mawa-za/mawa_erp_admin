@@ -1,6 +1,8 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:http/http.dart' as http;
+import 'package:mawa_erp_admin/utils/app_error.dart';
 
 import 'auth_service.dart';
 
@@ -96,20 +98,38 @@ class AuthenticatedHttpClient {
     required Map<String, String> headers,
     Object? body,
     Encoding? encoding,
-  }) {
-    switch (method) {
-      case 'GET':
-        return _client.get(url, headers: headers);
-      case 'POST':
-        return _client.post(url, headers: headers, body: body, encoding: encoding);
-      case 'PUT':
-        return _client.put(url, headers: headers, body: body, encoding: encoding);
-      case 'DELETE':
-        return _client.delete(url, headers: headers, body: body, encoding: encoding);
-      case 'PATCH':
-        return _client.patch(url, headers: headers, body: body, encoding: encoding);
-      default:
-        throw UnsupportedError('Unsupported HTTP method: $method');
+  }) async {
+    try {
+      late final Future<http.Response> request;
+      switch (method) {
+        case 'GET':
+          request = _client.get(url, headers: headers);
+          break;
+        case 'POST':
+          request = _client.post(url, headers: headers, body: body, encoding: encoding);
+          break;
+        case 'PUT':
+          request = _client.put(url, headers: headers, body: body, encoding: encoding);
+          break;
+        case 'DELETE':
+          request = _client.delete(url, headers: headers, body: body, encoding: encoding);
+          break;
+        case 'PATCH':
+          request = _client.patch(url, headers: headers, body: body, encoding: encoding);
+          break;
+        default:
+          throw UnsupportedError('Unsupported HTTP method: $method');
+      }
+      return await request.timeout(const Duration(seconds: 45));
+    } on TimeoutException catch (error) {
+      throw AppException(
+        error,
+        fallback: 'The request took too long. Check your connection and try again.',
+      );
+    } on AppException {
+      rethrow;
+    } catch (error) {
+      throw AppException(error);
     }
   }
 

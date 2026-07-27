@@ -7,6 +7,7 @@ import '../services/tenant_service.dart';
 import '../models/tenant_property.dart';
 import '../models/platform_management.dart';
 import '../models/industry_profile.dart';
+import 'package:mawa_erp_admin/utils/app_error.dart';
 
 class TenantDetailScreen extends StatefulWidget {
   final Tenant tenant;
@@ -285,7 +286,7 @@ class _TenantDetailScreenState extends State<TenantDetailScreen> {
                 children: [
                   header,
                   const Divider(),
-                  Text('Failed to load industry profile: ${snapshot.error}', style: const TextStyle(color: Colors.red)),
+                  Text(friendlyErrorMessage('Failed to load industry profile: ${snapshot.error}'), style: const TextStyle(color: Colors.red)),
                 ],
               );
             }
@@ -370,7 +371,7 @@ class _TenantDetailScreenState extends State<TenantDetailScreen> {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Industry profiles could not be loaded: $error'),
+          content: Text(friendlyErrorMessage('Industry profiles could not be loaded: $error')),
           backgroundColor: Colors.red,
         ),
       );
@@ -472,7 +473,7 @@ class _TenantDetailScreenState extends State<TenantDetailScreen> {
                           setDialogState(() => saving = false);
                           if (dialogContext.mounted) {
                             ScaffoldMessenger.of(dialogContext).showSnackBar(
-                              SnackBar(content: Text('Industry profile could not be saved: $error'), backgroundColor: Colors.red),
+                              SnackBar(content: Text(friendlyErrorMessage('Industry profile could not be saved: $error')), backgroundColor: Colors.red),
                             );
                           }
                         }
@@ -518,7 +519,7 @@ class _TenantDetailScreenState extends State<TenantDetailScreen> {
                   return const LinearProgressIndicator();
                 }
                 if (snapshot.hasError) {
-                  return Text('Failed to load subscription: ${snapshot.error}', style: const TextStyle(color: Colors.red));
+                  return Text(friendlyErrorMessage('Failed to load subscription: ${snapshot.error}'), style: const TextStyle(color: Colors.red));
                 }
                 final subscription = snapshot.data;
                 if (subscription == null) {
@@ -565,7 +566,7 @@ class _TenantDetailScreenState extends State<TenantDetailScreen> {
                   return const LinearProgressIndicator();
                 }
                 if (snapshot.hasError) {
-                  return Text('Failed to load modules: ${snapshot.error}', style: const TextStyle(color: Colors.red));
+                  return Text(friendlyErrorMessage('Failed to load modules: ${snapshot.error}'), style: const TextStyle(color: Colors.red));
                 }
                 final modules = snapshot.data ?? [];
                 if (modules.isEmpty) {
@@ -617,7 +618,7 @@ class _TenantDetailScreenState extends State<TenantDetailScreen> {
                 });
               } catch (e) {
                 if (!mounted) return;
-                ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Module update failed: $e'), backgroundColor: Colors.red));
+                ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(friendlyErrorMessage('Module update failed: $e')), backgroundColor: Colors.red));
               }
             },
           ),
@@ -684,7 +685,7 @@ class _TenantDetailScreenState extends State<TenantDetailScreen> {
               future: _printingFuture,
               builder: (context, snapshot) {
                 if (snapshot.connectionState == ConnectionState.waiting) return const LinearProgressIndicator();
-                if (snapshot.hasError) return Text('Failed to load POS printing: ${snapshot.error}', style: const TextStyle(color: Colors.red));
+                if (snapshot.hasError) return Text(friendlyErrorMessage('Failed to load POS printing: ${snapshot.error}'), style: const TextStyle(color: Colors.red));
                 final data = snapshot.data ?? const {};
                 final agents = (data['agents'] as List?) ?? const [];
                 final terminals = (data['terminals'] as List?) ?? const [];
@@ -812,13 +813,13 @@ class _TenantDetailScreenState extends State<TenantDetailScreen> {
       );
       _refreshAll();
     } catch (e) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('$e'), backgroundColor: Colors.red));
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(friendlyErrorMessage('$e')), backgroundColor: Colors.red));
     }
   }
 
   Future<void> _revokePrintAgent(String agentId) async {
     try { await _tenantService.revokePosPrintAgent(_tenant.id, agentId); _refreshAll(); }
-    catch (e) { if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('$e'), backgroundColor: Colors.red)); }
+    catch (e) { if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(friendlyErrorMessage('$e')), backgroundColor: Colors.red)); }
   }
 
   Future<void> _setPrintTerminalEnabled(String terminalId, bool enabled) async {
@@ -828,7 +829,7 @@ class _TenantDetailScreenState extends State<TenantDetailScreen> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('$e'), backgroundColor: Colors.red),
+          SnackBar(content: Text(friendlyErrorMessage('$e')), backgroundColor: Colors.red),
         );
       }
     }
@@ -836,7 +837,7 @@ class _TenantDetailScreenState extends State<TenantDetailScreen> {
 
   Future<void> _retryPrintJob(String jobId) async {
     try { await _tenantService.retryPosPrintJob(_tenant.id, jobId); _refreshAll(); }
-    catch (e) { if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('$e'), backgroundColor: Colors.red)); }
+    catch (e) { if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(friendlyErrorMessage('$e')), backgroundColor: Colors.red)); }
   }
 
   Widget _buildDataMaintenanceCard() {
@@ -867,7 +868,7 @@ class _TenantDetailScreenState extends State<TenantDetailScreen> {
                   return const LinearProgressIndicator();
                 }
                 if (snapshot.hasError) {
-                  return Text('Failed to load maintenance operations: ${snapshot.error}', style: const TextStyle(color: Colors.red));
+                  return Text(friendlyErrorMessage('Failed to load maintenance operations: ${snapshot.error}'), style: const TextStyle(color: Colors.red));
                 }
                 final manualJobs = (snapshot.data ?? [])
                     .where((schedule) => schedule.manualOnly || schedule.jobCode == 'ATTACHMENT_GCS_MIGRATION')
@@ -1078,7 +1079,7 @@ class _TenantDetailScreenState extends State<TenantDetailScreen> {
                   return const Padding(padding: EdgeInsets.only(top: 20), child: Center(child: CircularProgressIndicator()));
                 }
                 if (snapshot.hasError) {
-                  return Text('Error loading properties: ${snapshot.error}', style: const TextStyle(color: Colors.red));
+                  return Text(friendlyErrorMessage('Error loading properties: ${snapshot.error}'), style: const TextStyle(color: Colors.red));
                 }
                 final query = _propertySearchController.text.trim().toLowerCase();
                 final properties = (snapshot.data ?? []).where((property) {
@@ -1172,7 +1173,7 @@ class _TenantDetailScreenState extends State<TenantDetailScreen> {
                   return const LinearProgressIndicator();
                 }
                 if (snapshot.hasError) {
-                  return Text('Failed to load activity: ${snapshot.error}', style: const TextStyle(color: Colors.red));
+                  return Text(friendlyErrorMessage('Failed to load activity: ${snapshot.error}'), style: const TextStyle(color: Colors.red));
                 }
                 final query = _activitySearchController.text.trim().toLowerCase();
                 final items = (snapshot.data ?? []).where((item) {
@@ -1366,7 +1367,7 @@ class _TenantDetailScreenState extends State<TenantDetailScreen> {
                         _refreshAll();
                       } catch (e) {
                         if (!mounted) return;
-                        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Update failed: $e'), backgroundColor: Colors.red));
+                        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(friendlyErrorMessage('Update failed: $e')), backgroundColor: Colors.red));
                         setDialogState(() => isSaving = false);
                       }
                     },
@@ -1387,7 +1388,7 @@ class _TenantDetailScreenState extends State<TenantDetailScreen> {
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Tenant marked $status')));
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Status update failed: $e'), backgroundColor: Colors.red));
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(friendlyErrorMessage('Status update failed: $e')), backgroundColor: Colors.red));
     }
   }
 
@@ -1468,7 +1469,7 @@ class _TenantDetailScreenState extends State<TenantDetailScreen> {
                         _refreshAll();
                       } catch (e) {
                         if (!mounted) return;
-                        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Subscription update failed: $e'), backgroundColor: Colors.red));
+                        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(friendlyErrorMessage('Subscription update failed: $e')), backgroundColor: Colors.red));
                         setDialogState(() => isSaving = false);
                       }
                     },
@@ -1608,7 +1609,7 @@ class _TenantDetailScreenState extends State<TenantDetailScreen> {
                           ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(storeAsSecret ? 'Secret saved and property reference added' : 'Property added successfully')));
                         }
                       } catch (e) {
-                        if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red));
+                        if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(friendlyErrorMessage('Error: $e')), backgroundColor: Colors.red));
                         if (dialogOpen) setDialogState(() => isSaving = false);
                       }
                     },
@@ -1634,7 +1635,7 @@ class _TenantDetailScreenState extends State<TenantDetailScreen> {
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Schedule updated')));
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Schedule update failed: $e'), backgroundColor: Colors.red));
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(friendlyErrorMessage('Schedule update failed: $e')), backgroundColor: Colors.red));
     }
   }
 
@@ -1689,7 +1690,7 @@ class _TenantDetailScreenState extends State<TenantDetailScreen> {
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Run failed: $e'), backgroundColor: Colors.red),
+        SnackBar(content: Text(friendlyErrorMessage('Run failed: $e')), backgroundColor: Colors.red),
       );
     }
   }
@@ -1770,7 +1771,7 @@ class _TenantDetailScreenState extends State<TenantDetailScreen> {
         if (lastError != null) throw lastError;
         final batchResult = result;
         if (batchResult == null) {
-          throw Exception('Attachment migration batch returned no result.');
+          throw AppException('Attachment migration batch returned no result.');
         }
 
         totalAttempted += batchResult.migrationAttempted;
@@ -1794,7 +1795,7 @@ class _TenantDetailScreenState extends State<TenantDetailScreen> {
         if (nextCursor == null ||
             nextCursor.isEmpty ||
             nextCursor == cursor) {
-          throw Exception(
+          throw AppException(
             'Migration did not return a valid continuation cursor.',
           );
         }
@@ -1802,7 +1803,7 @@ class _TenantDetailScreenState extends State<TenantDetailScreen> {
       }
 
       if (!migrationCompleted && !scanComplete) {
-        throw Exception(
+        throw AppException(
           'Migration stopped after the safety limit of 100000 batches. '
           'Run it again to continue.',
         );
@@ -1842,7 +1843,7 @@ class _TenantDetailScreenState extends State<TenantDetailScreen> {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Attachment migration failed: $e'),
+          content: Text(friendlyErrorMessage('Attachment migration failed: $e')),
           backgroundColor: Colors.red,
           duration: const Duration(seconds: 12),
         ),
@@ -1860,7 +1861,7 @@ class _TenantDetailScreenState extends State<TenantDetailScreen> {
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('ERP configuration sync requested')));
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('ERP sync failed: $e'), backgroundColor: Colors.red));
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(friendlyErrorMessage('ERP sync failed: $e')), backgroundColor: Colors.red));
     }
   }
 
@@ -1872,7 +1873,7 @@ class _TenantDetailScreenState extends State<TenantDetailScreen> {
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('ERP module sync requested')));
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Module sync failed: $e'), backgroundColor: Colors.red));
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(friendlyErrorMessage('Module sync failed: $e')), backgroundColor: Colors.red));
     }
   }
 
@@ -1943,7 +1944,7 @@ class _TenantDetailScreenState extends State<TenantDetailScreen> {
             : ticketController.text.trim(),
       );
       if (handoff.targetUrl.trim().isEmpty) {
-        throw Exception('The backend did not return an ERP handoff URL.');
+        throw AppException('The backend did not return an ERP handoff URL.');
       }
       final launched = await navigateExternalWindow(reservedWindow, handoff.targetUrl);
       if (!launched && mounted) {
@@ -1955,7 +1956,7 @@ class _TenantDetailScreenState extends State<TenantDetailScreen> {
       closeExternalWindow(reservedWindow);
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Open ERP failed: $e'), backgroundColor: Colors.red),
+        SnackBar(content: Text(friendlyErrorMessage('Open ERP failed: $e')), backgroundColor: Colors.red),
       );
     }
   }

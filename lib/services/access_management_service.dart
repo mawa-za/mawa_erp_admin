@@ -2,11 +2,12 @@ import 'dart:convert';
 import '../config.dart';
 import '../models/access_management.dart';
 import 'authenticated_http_client.dart';
+import 'package:mawa_erp_admin/utils/app_error.dart';
 
 class AccessManagementService {
   final AuthenticatedHttpClient _client=AuthenticatedHttpClient();
   Map<String,String> get _headers=>const {'Content-Type':'application/json','Accept':'application/json'};
-  Future<dynamic> _decode(Future<dynamic> request) async { final response=await request; if(response.statusCode>=200&&response.statusCode<300){return response.body.isEmpty?null:jsonDecode(response.body);} throw Exception(response.body.isNotEmpty?response.body:'Access management request failed'); }
+  Future<dynamic> _decode(Future<dynamic> request) async { final response=await request; if(response.statusCode>=200&&response.statusCode<300){return response.body.isEmpty?null:jsonDecode(response.body);} throw AppException(response.body.isNotEmpty?response.body:'Access management request failed'); }
   Future<AdminAccessProfile> getProfile() async=>AdminAccessProfile.fromJson((await _decode(_client.get(Uri.parse('${AppConfig.apiBaseUrl}/v2/access/profile'),headers:_headers))) as Map<String,dynamic>);
   Future<List<AdminUser>> getUsers() async{final d=await _decode(_client.get(Uri.parse('${AppConfig.apiBaseUrl}/v2/access/users'),headers:_headers)) as List<dynamic>; return d.map((e)=>AdminUser.fromJson(e as Map<String,dynamic>)).toList();}
   Future<List<AdminRole>> getRoles() async{final d=await _decode(_client.get(Uri.parse('${AppConfig.apiBaseUrl}/v2/access/roles'),headers:_headers)) as List<dynamic>; return d.map((e)=>AdminRole.fromJson(e as Map<String,dynamic>)).toList();}

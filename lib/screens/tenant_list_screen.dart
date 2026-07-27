@@ -3,6 +3,7 @@ import '../models/tenant.dart';
 import '../services/tenant_service.dart';
 import '../models/industry_profile.dart';
 import 'tenant_detail_screen.dart';
+import 'package:mawa_erp_admin/utils/app_error.dart';
 
 class TenantListScreen extends StatefulWidget {
   const TenantListScreen({super.key});
@@ -448,7 +449,7 @@ class _CreateTenantDialogState extends State<CreateTenantDialog> {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text('Error: $e'),
+              content: Text(friendlyErrorMessage('Error: $e')),
               backgroundColor: Colors.red.shade700,
               behavior: SnackBarBehavior.floating,
             ),

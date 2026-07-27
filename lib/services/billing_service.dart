@@ -3,6 +3,7 @@ import 'dart:convert';
 import '../config.dart';
 import '../models/billing.dart';
 import 'authenticated_http_client.dart';
+import 'package:mawa_erp_admin/utils/app_error.dart';
 
 class BillingService {
   final AuthenticatedHttpClient _http = AuthenticatedHttpClient();
@@ -216,7 +217,7 @@ class BillingService {
       final decoded = jsonDecode(body);
       if (decoded is Map) message = decoded['message']?.toString() ?? body;
     } catch (_) {}
-    throw Exception(message.isEmpty ? 'Billing request failed ($statusCode)' : message);
+    throw AppException(message.isEmpty ? 'Billing request failed ($statusCode)' : message);
   }
 
   String _date(DateTime value) => '${value.year.toString().padLeft(4, '0')}-${value.month.toString().padLeft(2, '0')}-${value.day.toString().padLeft(2, '0')}';
