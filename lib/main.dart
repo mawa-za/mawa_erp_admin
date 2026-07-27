@@ -39,11 +39,8 @@ class MyApp extends StatelessWidget {
       theme: AdminTheme.light,
       builder: (context, child) => ColoredBox(
         color: AdminDesign.page,
-        child: Center(
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 1920),
-            child: child ?? const SizedBox.shrink(),
-          ),
+        child: SizedBox.expand(
+          child: child ?? const SizedBox.shrink(),
         ),
       ),
       initialRoute: initialRoute,
@@ -176,78 +173,75 @@ class MyHomePage extends StatelessWidget {
                           width < 700 ? 16 : 28,
                           32,
                         ),
-                        child: Align(
-                          alignment: Alignment.topCenter,
-                          child: ConstrainedBox(
-                            constraints: const BoxConstraints(maxWidth: 1320),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                _buildWelcomeHeader(context, profile),
+                        child: SizedBox(
+                          width: double.infinity,
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              _buildWelcomeHeader(context, profile),
+                              const SizedBox(height: 20),
+                              _buildProfileBanner(context, profile),
+                              if (can('TENANT_MANAGEMENT')) ...[
                                 const SizedBox(height: 20),
-                                _buildProfileBanner(context, profile),
-                                if (can('TENANT_MANAGEMENT')) ...[
-                                  const SizedBox(height: 20),
-                                  _buildDashboardMetrics(context),
-                                ],
-                                const SizedBox(height: 28),
-                                Text(
-                                  'Administration workcenters',
-                                  style: Theme.of(context)
-                                      .textTheme
-                                      .headlineSmall,
-                                ),
-                                const SizedBox(height: 6),
-                                Text(
-                                  'Open a workcenter to manage the assigned platform responsibilities.',
-                                  style: Theme.of(context)
-                                      .textTheme
-                                      .bodyMedium
-                                      ?.copyWith(color: AdminDesign.muted),
-                                ),
-                                const SizedBox(height: 16),
-                                if (modules.isEmpty)
-                                  const Card(
-                                    child: Padding(
-                                      padding: EdgeInsets.all(28),
-                                      child: Row(
-                                        children: [
-                                          Icon(Icons.lock_outline_rounded),
-                                          SizedBox(width: 14),
-                                          Expanded(
-                                            child: Text(
-                                              'No Admin Console features are assigned to your current roles.',
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                  )
-                                else
-                                  LayoutBuilder(
-                                    builder: (context, constraints) {
-                                      return GridView.builder(
-                                        shrinkWrap: true,
-                                        physics:
-                                            const NeverScrollableScrollPhysics(),
-                                        gridDelegate:
-                                            const SliverGridDelegateWithMaxCrossAxisExtent(
-                                          maxCrossAxisExtent: 360,
-                                          mainAxisExtent: 224,
-                                          crossAxisSpacing: 16,
-                                          mainAxisSpacing: 16,
-                                        ),
-                                        itemCount: modules.length,
-                                        itemBuilder: (context, index) =>
-                                            _buildModuleCard(
-                                          context,
-                                          modules[index],
-                                        ),
-                                      );
-                                    },
-                                  ),
+                                _buildDashboardMetrics(context),
                               ],
-                            ),
+                              const SizedBox(height: 28),
+                              Text(
+                                'Administration workcenters',
+                                style: Theme.of(context)
+                                    .textTheme
+                                    .headlineSmall,
+                              ),
+                              const SizedBox(height: 6),
+                              Text(
+                                'Open a workcenter to manage the assigned platform responsibilities.',
+                                style: Theme.of(context)
+                                    .textTheme
+                                    .bodyMedium
+                                    ?.copyWith(color: AdminDesign.muted),
+                              ),
+                              const SizedBox(height: 16),
+                              if (modules.isEmpty)
+                                const Card(
+                                  child: Padding(
+                                    padding: EdgeInsets.all(28),
+                                    child: Row(
+                                      children: [
+                                        Icon(Icons.lock_outline_rounded),
+                                        SizedBox(width: 14),
+                                        Expanded(
+                                          child: Text(
+                                            'No Admin Console features are assigned to your current roles.',
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                )
+                              else
+                                LayoutBuilder(
+                                  builder: (context, constraints) {
+                                    return GridView.builder(
+                                      shrinkWrap: true,
+                                      physics:
+                                          const NeverScrollableScrollPhysics(),
+                                      gridDelegate:
+                                          const SliverGridDelegateWithMaxCrossAxisExtent(
+                                        maxCrossAxisExtent: 360,
+                                        mainAxisExtent: 224,
+                                        crossAxisSpacing: 16,
+                                        mainAxisSpacing: 16,
+                                      ),
+                                      itemCount: modules.length,
+                                      itemBuilder: (context, index) =>
+                                          _buildModuleCard(
+                                        context,
+                                        modules[index],
+                                      ),
+                                    );
+                                  },
+                                ),
+                            ],
                           ),
                         ),
                       ),
@@ -304,7 +298,7 @@ class MyHomePage extends StatelessWidget {
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 18),
               child: Text(
-                'v1.0.6+7 • ${AppConfig.environment.name}',
+                'v1.0.7+8 • ${AppConfig.environment.name}',
                 style: Theme.of(context).textTheme.bodySmall?.copyWith(
                       color: AdminDesign.muted,
                     ),

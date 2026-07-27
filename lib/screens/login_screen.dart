@@ -230,7 +230,7 @@ class _LoginScreenState extends State<LoginScreen> {
                             ),
                             const SizedBox(height: 18),
                             Text(
-                              'MAWA Admin Console • v1.0.6+7',
+                              'MAWA Admin Console • v1.0.7+8',
                               textAlign: TextAlign.center,
                               style: Theme.of(context).textTheme.bodySmall?.copyWith(
                                     color: AdminDesign.muted,
