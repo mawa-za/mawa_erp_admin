@@ -4,6 +4,7 @@ import '../models/access_management.dart';
 import '../models/tenant.dart';
 import '../services/access_management_service.dart';
 import '../services/tenant_service.dart';
+import 'package:mawa_erp_admin/utils/app_error.dart';
 
 class AccessManagementScreen extends StatefulWidget {
   const AccessManagementScreen({super.key});
@@ -84,7 +85,7 @@ class _AccessManagementScreenState extends State<AccessManagementScreen>
     } catch (error) {
       if (!mounted) return;
       setState(() {
-        _error = error.toString();
+        _error = friendlyErrorMessage(error);
         _loading = false;
       });
     }
@@ -834,7 +835,7 @@ class _AccessManagementScreenState extends State<AccessManagementScreen>
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text(error.toString()),
+        content: Text(friendlyErrorMessage(error)),
         backgroundColor: Colors.red,
       ),
     );

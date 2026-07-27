@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../models/industry_profile.dart';
 import '../services/tenant_service.dart';
 import '../theme/admin_theme.dart';
+import 'package:mawa_erp_admin/utils/app_error.dart';
 
 class IndustryProfilesScreen extends StatefulWidget {
   const IndustryProfilesScreen({super.key});
@@ -253,7 +254,7 @@ class _IndustryProfileEditorScreenState extends State<IndustryProfileEditorScree
     } catch (error) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Industry profile could not be saved: $error'), backgroundColor: Colors.red),
+        SnackBar(content: Text(friendlyErrorMessage('Industry profile could not be saved: $error')), backgroundColor: Colors.red),
       );
       setState(() => _saving = false);
     }
@@ -703,7 +704,7 @@ class _ErrorState extends StatelessWidget {
             const SizedBox(height: 12),
             Text('Industry profiles could not be loaded', style: Theme.of(context).textTheme.titleMedium),
             const SizedBox(height: 6),
-            Text('$error', textAlign: TextAlign.center),
+            Text(friendlyErrorMessage('$error'), textAlign: TextAlign.center),
             const SizedBox(height: 12),
             FilledButton.icon(onPressed: onRetry, icon: const Icon(Icons.refresh_rounded), label: const Text('Retry')),
           ],

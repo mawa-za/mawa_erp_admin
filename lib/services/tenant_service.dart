@@ -6,6 +6,7 @@ import '../models/erp_handoff.dart';
 import '../models/platform_management.dart';
 import '../models/industry_profile.dart';
 import 'authenticated_http_client.dart';
+import 'package:mawa_erp_admin/utils/app_error.dart';
 
 class TenantService {
   final AuthenticatedHttpClient _client = AuthenticatedHttpClient();
@@ -25,7 +26,7 @@ class TenantService {
       List<dynamic> data = jsonDecode(response.body);
       return data.map((json) => Tenant.fromJson(json)).toList();
     } else {
-      throw Exception('Failed to load tenants');
+      throw AppException('Failed to load tenants');
     }
   }
 
@@ -53,7 +54,7 @@ class TenantService {
       }
       return Tenant.fromJson(jsonDecode(response.body));
     } else {
-      throw Exception(response.body.isNotEmpty ? response.body : 'Failed to create tenant');
+      throw AppException(response.body.isNotEmpty ? response.body : 'Failed to create tenant');
     }
   }
 
@@ -68,7 +69,7 @@ class TenantService {
           .map((item) => IndustryProfile.fromJson(Map<String, dynamic>.from(item as Map)))
           .toList();
     }
-    throw Exception(response.body.isNotEmpty ? response.body : 'Failed to load industry profiles');
+    throw AppException(response.body.isNotEmpty ? response.body : 'Failed to load industry profiles');
   }
 
   Future<IndustryProfile> getIndustryProfile(String code) async {
@@ -79,7 +80,7 @@ class TenantService {
     if (response.statusCode == 200) {
       return IndustryProfile.fromJson(jsonDecode(response.body) as Map<String, dynamic>);
     }
-    throw Exception(response.body.isNotEmpty ? response.body : 'Failed to load industry profile');
+    throw AppException(response.body.isNotEmpty ? response.body : 'Failed to load industry profile');
   }
 
   Future<IndustryProfile> saveIndustryProfile(IndustryProfile profile, {bool create = false}) async {
@@ -92,7 +93,7 @@ class TenantService {
     if (response.statusCode == 200 || response.statusCode == 201) {
       return IndustryProfile.fromJson(jsonDecode(response.body) as Map<String, dynamic>);
     }
-    throw Exception(response.body.isNotEmpty ? response.body : 'Failed to save industry profile');
+    throw AppException(response.body.isNotEmpty ? response.body : 'Failed to save industry profile');
   }
 
   Future<TenantIndustryProfile> getTenantIndustryProfile(String tenantId) async {
@@ -103,7 +104,7 @@ class TenantService {
     if (response.statusCode == 200) {
       return TenantIndustryProfile.fromJson(jsonDecode(response.body) as Map<String, dynamic>);
     }
-    throw Exception(response.body.isNotEmpty ? response.body : 'Failed to load tenant industry profile');
+    throw AppException(response.body.isNotEmpty ? response.body : 'Failed to load tenant industry profile');
   }
 
   Future<TenantIndustryProfile> saveTenantIndustryProfile(
@@ -122,7 +123,7 @@ class TenantService {
     if (response.statusCode == 200) {
       return TenantIndustryProfile.fromJson(jsonDecode(response.body) as Map<String, dynamic>);
     }
-    throw Exception(response.body.isNotEmpty ? response.body : 'Failed to update tenant industry profile');
+    throw AppException(response.body.isNotEmpty ? response.body : 'Failed to update tenant industry profile');
   }
 
   Future<TenantExperience> getTenantExperiencePreview(String tenantId) async {
@@ -133,7 +134,7 @@ class TenantService {
     if (response.statusCode == 200) {
       return TenantExperience.fromJson(jsonDecode(response.body) as Map<String, dynamic>);
     }
-    throw Exception(response.body.isNotEmpty ? response.body : 'Failed to load tenant experience preview');
+    throw AppException(response.body.isNotEmpty ? response.body : 'Failed to load tenant experience preview');
   }
 
   Future<Map<String, String>> getTenantProperties(String tenantId) async {
@@ -146,7 +147,7 @@ class TenantService {
       Map<String, dynamic> data = jsonDecode(response.body);
       return data.map((key, value) => MapEntry(key, value.toString()));
     } else {
-      throw Exception('Failed to load tenant properties');
+      throw AppException('Failed to load tenant properties');
     }
   }
 
@@ -160,7 +161,7 @@ class TenantService {
       List<dynamic> data = jsonDecode(response.body);
       return data.map((json) => TenantProperty.fromJson(json)).toList();
     } else {
-      throw Exception('Failed to load tenant properties');
+      throw AppException('Failed to load tenant properties');
     }
   }
 
@@ -174,7 +175,7 @@ class TenantService {
       final data = jsonDecode(response.body) as Map<String, dynamic>;
       return data['secretName']?.toString() ?? '';
     }
-    throw Exception(response.body.isNotEmpty ? response.body : 'Failed to generate tenant secret name');
+    throw AppException(response.body.isNotEmpty ? response.body : 'Failed to generate tenant secret name');
   }
 
   Future<void> addTenantProperty(TenantPropertyRequest request) async {
@@ -185,7 +186,7 @@ class TenantService {
     );
 
     if (response.statusCode != 200 && response.statusCode != 201) {
-      throw Exception(response.body.isNotEmpty ? response.body : 'Failed to add tenant property');
+      throw AppException(response.body.isNotEmpty ? response.body : 'Failed to add tenant property');
     }
   }
 
@@ -196,7 +197,7 @@ class TenantService {
     );
 
     if (response.statusCode != 200) {
-      throw Exception(response.body.isNotEmpty ? response.body : 'Failed to sync tenant ERP configuration');
+      throw AppException(response.body.isNotEmpty ? response.body : 'Failed to sync tenant ERP configuration');
     }
   }
 
@@ -207,7 +208,7 @@ class TenantService {
     );
 
     if (response.statusCode != 200) {
-      throw Exception(response.body.isNotEmpty ? response.body : 'Failed to sync tenant billing modules');
+      throw AppException(response.body.isNotEmpty ? response.body : 'Failed to sync tenant billing modules');
     }
   }
 
@@ -219,7 +220,7 @@ class TenantService {
     );
 
     if (response.statusCode != 200) {
-      throw Exception(response.body.isNotEmpty ? response.body : 'Failed to update tenant billing module');
+      throw AppException(response.body.isNotEmpty ? response.body : 'Failed to update tenant billing module');
     }
   }
 
@@ -243,7 +244,7 @@ class TenantService {
       final data = jsonDecode(response.body);
       return ErpHandoff.fromJson(data as Map<String, dynamic>);
     }
-    throw Exception(response.body.isNotEmpty ? response.body : 'Failed to create ERP handoff');
+    throw AppException(response.body.isNotEmpty ? response.body : 'Failed to create ERP handoff');
   }
 
   Future<AdminDashboardSummary> getDashboardSummary() async {
@@ -255,7 +256,7 @@ class TenantService {
     if (response.statusCode == 200) {
       return AdminDashboardSummary.fromJson(jsonDecode(response.body) as Map<String, dynamic>);
     }
-    throw Exception(response.body.isNotEmpty ? response.body : 'Failed to load dashboard summary');
+    throw AppException(response.body.isNotEmpty ? response.body : 'Failed to load dashboard summary');
   }
 
   Future<Tenant> updateTenant(String tenantId, Tenant tenant) async {
@@ -268,7 +269,7 @@ class TenantService {
     if (response.statusCode == 200) {
       return Tenant.fromJson(jsonDecode(response.body));
     }
-    throw Exception(response.body.isNotEmpty ? response.body : 'Failed to update tenant');
+    throw AppException(response.body.isNotEmpty ? response.body : 'Failed to update tenant');
   }
 
   Future<Tenant> updateTenantStatus(String tenantId, String status, {String? reason}) async {
@@ -281,7 +282,7 @@ class TenantService {
     if (response.statusCode == 200) {
       return Tenant.fromJson(jsonDecode(response.body));
     }
-    throw Exception(response.body.isNotEmpty ? response.body : 'Failed to update tenant status');
+    throw AppException(response.body.isNotEmpty ? response.body : 'Failed to update tenant status');
   }
 
   Future<List<SubscriptionPlan>> getSubscriptionPlans() async {
@@ -296,7 +297,7 @@ class TenantService {
           .map((item) => _subscriptionPlanFromBilling(Map<String, dynamic>.from(item as Map)))
           .toList();
     }
-    throw Exception(response.body.isNotEmpty ? response.body : 'Failed to load billing plans');
+    throw AppException(response.body.isNotEmpty ? response.body : 'Failed to load billing plans');
   }
 
   Future<SubscriptionPlan> saveSubscriptionPlan(SubscriptionPlan plan) async {
@@ -311,7 +312,7 @@ class TenantService {
     if (response.statusCode == 200 || response.statusCode == 201) {
       return _subscriptionPlanFromBilling(Map<String, dynamic>.from(jsonDecode(response.body) as Map));
     }
-    throw Exception(response.body.isNotEmpty ? response.body : 'Failed to save billing plan');
+    throw AppException(response.body.isNotEmpty ? response.body : 'Failed to save billing plan');
   }
 
   Future<TenantSubscription?> getTenantSubscription(String tenantId) async {
@@ -324,7 +325,7 @@ class TenantService {
       if (response.body.isEmpty || response.body == 'null') return null;
       return _tenantSubscriptionFromBilling(Map<String, dynamic>.from(jsonDecode(response.body) as Map));
     }
-    throw Exception(response.body.isNotEmpty ? response.body : 'Failed to load tenant billing subscription');
+    throw AppException(response.body.isNotEmpty ? response.body : 'Failed to load tenant billing subscription');
   }
 
   Future<TenantSubscription> saveTenantSubscription(String tenantId, TenantSubscription subscription) async {
@@ -337,7 +338,7 @@ class TenantService {
     if (response.statusCode == 200) {
       return _tenantSubscriptionFromBilling(Map<String, dynamic>.from(jsonDecode(response.body) as Map));
     }
-    throw Exception(response.body.isNotEmpty ? response.body : 'Failed to save tenant billing subscription');
+    throw AppException(response.body.isNotEmpty ? response.body : 'Failed to save tenant billing subscription');
   }
 
   Future<List<TenantModule>> getTenantModules(String tenantId) async {
@@ -358,7 +359,7 @@ class TenantService {
         );
       }).toList();
     }
-    throw Exception(response.body.isNotEmpty ? response.body : 'Failed to load tenant billing modules');
+    throw AppException(response.body.isNotEmpty ? response.body : 'Failed to load tenant billing modules');
   }
 
   Future<List<TenantActivityLog>> getTenantActivity(String tenantId) async {
@@ -371,7 +372,7 @@ class TenantService {
       final data = jsonDecode(response.body) as List<dynamic>;
       return data.map((json) => TenantActivityLog.fromJson(json as Map<String, dynamic>)).toList();
     }
-    throw Exception(response.body.isNotEmpty ? response.body : 'Failed to load tenant activity');
+    throw AppException(response.body.isNotEmpty ? response.body : 'Failed to load tenant activity');
   }
 
   Future<List<TenantSchedule>> getTenantSchedules(String tenantId) async {
@@ -384,7 +385,7 @@ class TenantService {
       final data = jsonDecode(response.body) as List<dynamic>;
       return data.map((json) => TenantSchedule.fromJson(json as Map<String, dynamic>)).toList();
     }
-    throw Exception(response.body.isNotEmpty ? response.body : 'Failed to load tenant schedules');
+    throw AppException(response.body.isNotEmpty ? response.body : 'Failed to load tenant schedules');
   }
 
   Future<TenantSchedule> saveTenantSchedule(String tenantId, TenantSchedule schedule) async {
@@ -397,7 +398,7 @@ class TenantService {
     if (response.statusCode == 200) {
       return TenantSchedule.fromJson(jsonDecode(response.body) as Map<String, dynamic>);
     }
-    throw Exception(response.body.isNotEmpty ? response.body : 'Failed to save tenant schedule');
+    throw AppException(response.body.isNotEmpty ? response.body : 'Failed to save tenant schedule');
   }
 
   Future<TenantSchedule> runTenantScheduleNow(
@@ -427,7 +428,7 @@ class TenantService {
         jsonDecode(response.body) as Map<String, dynamic>,
       );
     }
-    throw Exception(
+    throw AppException(
       response.body.isNotEmpty ? response.body : 'Failed to run tenant schedule',
     );
   }
@@ -440,7 +441,7 @@ class TenantService {
     if (response.statusCode == 200) {
       return Map<String, dynamic>.from(jsonDecode(response.body) as Map);
     }
-    throw Exception(response.body.isNotEmpty ? response.body : 'Failed to load POS printing');
+    throw AppException(response.body.isNotEmpty ? response.body : 'Failed to load POS printing');
   }
 
   Future<Map<String, dynamic>> createPosPrintEnrollment(
@@ -456,7 +457,7 @@ class TenantService {
     if (response.statusCode == 200 || response.statusCode == 201) {
       return Map<String, dynamic>.from(jsonDecode(response.body) as Map);
     }
-    throw Exception(response.body.isNotEmpty ? response.body : 'Failed to create print agent enrollment');
+    throw AppException(response.body.isNotEmpty ? response.body : 'Failed to create print agent enrollment');
   }
 
   Future<void> revokePosPrintAgent(String tenantId, String agentId) async {
@@ -464,7 +465,7 @@ class TenantService {
       Uri.parse('${AppConfig.apiBaseUrl}/tenant/$tenantId/pos-printing/agents/$agentId/revoke'),
       headers: await _getHeaders(),
     );
-    if (response.statusCode != 200) throw Exception(response.body.isNotEmpty ? response.body : 'Failed to revoke print agent');
+    if (response.statusCode != 200) throw AppException(response.body.isNotEmpty ? response.body : 'Failed to revoke print agent');
   }
 
   Future<void> setPosTerminalEnabled(String tenantId, String terminalId, bool enabled) async {
@@ -474,7 +475,7 @@ class TenantService {
       body: jsonEncode({'enabled': enabled}),
     );
     if (response.statusCode != 200) {
-      throw Exception(response.body.isNotEmpty ? response.body : 'Failed to update POS terminal');
+      throw AppException(response.body.isNotEmpty ? response.body : 'Failed to update POS terminal');
     }
   }
 
@@ -483,7 +484,7 @@ class TenantService {
       Uri.parse('${AppConfig.apiBaseUrl}/tenant/$tenantId/pos-printing/jobs/$jobId/retry'),
       headers: await _getHeaders(),
     );
-    if (response.statusCode != 200) throw Exception(response.body.isNotEmpty ? response.body : 'Failed to retry print job');
+    if (response.statusCode != 200) throw AppException(response.body.isNotEmpty ? response.body : 'Failed to retry print job');
   }
 
 
