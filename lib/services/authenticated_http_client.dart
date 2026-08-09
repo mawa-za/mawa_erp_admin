@@ -1,0 +1,137 @@
+import 'dart:async';
+import 'dart:convert';
+
+import 'package:http/http.dart' as http;
+import 'package:mawa_erp_admin/utils/app_error.dart';
+
+import 'auth_service.dart';
+
+class AuthenticatedHttpClient {
+  AuthenticatedHttpClient({AuthService? authService, http.Client? client})
+      : _authService = authService ?? AuthService(),
+        _client = client ?? http.Client();
+
+  final AuthService _authService;
+  final http.Client _client;
+
+  Future<http.Response> get(Uri url, {Map<String, String>? headers}) =>
+      _send('GET', url, headers: headers);
+
+  Future<http.Response> post(
+    Uri url, {
+    Map<String, String>? headers,
+    Object? body,
+    Encoding? encoding,
+  }) =>
+      _send('POST', url, headers: headers, body: body, encoding: encoding);
+
+  Future<http.Response> put(
+    Uri url, {
+    Map<String, String>? headers,
+    Object? body,
+    Encoding? encoding,
+  }) =>
+      _send('PUT', url, headers: headers, body: body, encoding: encoding);
+
+  Future<http.Response> delete(
+    Uri url, {
+    Map<String, String>? headers,
+    Object? body,
+    Encoding? encoding,
+  }) =>
+      _send('DELETE', url, headers: headers, body: body, encoding: encoding);
+
+  Future<http.Response> patch(
+    Uri url, {
+    Map<String, String>? headers,
+    Object? body,
+    Encoding? encoding,
+  }) =>
+      _send('PATCH', url, headers: headers, body: body, encoding: encoding);
+
+  Future<http.Response> _send(
+    String method,
+    Uri url, {
+    Map<String, String>? headers,
+    Object? body,
+    Encoding? encoding,
+  }) async {
+    await _authService.ensureFreshAccessToken();
+    var response = await _execute(
+      method,
+      url,
+      headers: await _headersWithCurrentToken(headers),
+      body: body,
+      encoding: encoding,
+    );
+
+    if (response.statusCode != 401) return response;
+
+    final refreshed = await _authService.ensureFreshAccessToken(force: true);
+    if (!refreshed) return response;
+
+    return _execute(
+      method,
+      url,
+      headers: await _headersWithCurrentToken(headers),
+      body: body,
+      encoding: encoding,
+    );
+  }
+
+  Future<Map<String, String>> _headersWithCurrentToken(
+    Map<String, String>? original,
+  ) async {
+    final headers = <String, String>{...?original};
+    final accessToken = await _authService.getAccessToken();
+    if (accessToken != null && accessToken.isNotEmpty) {
+      headers['Authorization'] = 'Bearer $accessToken';
+    } else {
+      headers.remove('Authorization');
+    }
+    return headers;
+  }
+
+  Future<http.Response> _execute(
+    String method,
+    Uri url, {
+    required Map<String, String> headers,
+    Object? body,
+    Encoding? encoding,
+  }) async {
+    try {
+      late final Future<http.Response> request;
+      switch (method) {
+        case 'GET':
+          request = _client.get(url, headers: headers);
+          break;
+        case 'POST':
+          request = _client.post(url, headers: headers, body: body, encoding: encoding);
+          break;
+        case 'PUT':
+          request = _client.put(url, headers: headers, body: body, encoding: encoding);
+          break;
+        case 'DELETE':
+          request = _client.delete(url, headers: headers, body: body, encoding: encoding);
+          break;
+        case 'PATCH':
+          request = _client.patch(url, headers: headers, body: body, encoding: encoding);
+          break;
+        default:
+          throw UnsupportedError('Unsupported HTTP method: $method');
+      }
+      return await request.timeout(const Duration(seconds: 45));
+    } on TimeoutException catch (error) {
+      throw AppException(
+        error,
+        fallback: 'The request took too long. Check your connection and try again.',
+      );
+    } on AppException {
+      rethrow;
+    } catch (error) {
+      throw AppException(error);
+    }
+  }
+
+  void close() => _client.close();
+}
