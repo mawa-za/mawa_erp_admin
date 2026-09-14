@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../config.dart';
 import '../models/tenant.dart';
 import '../services/tenant_service.dart';
 import '../models/industry_profile.dart';
@@ -299,8 +300,8 @@ class _CreateTenantDialogState extends State<CreateTenantDialog> {
                     if (_tenantType == 'PLATFORM_OPERATOR') {
                       _idController.clear();
                       _nameController.text = 'Mawa Software Pty Ltd';
-                      _hostController.text = 'web.app.mawa.co.za';
-                      _urlController.text = 'https://web.app.mawa.co.za';
+                      _hostController.text = AppConfig.platformOperatorTenantHost;
+                      _urlController.text = AppConfig.platformOperatorTenantUrl;
                       _status = 'ACTIVE';
                     }
                   }),
