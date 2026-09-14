@@ -234,6 +234,7 @@ class _CreateTenantDialogState extends State<CreateTenantDialog> {
   final _dbUserController = TextEditingController();
   final _dbPassController = TextEditingController();
   String _status = 'ACTIVE';
+  String _tenantType = 'CUSTOMER';
   bool _isLoading = false;
   late Future<List<IndustryProfile>> _profilesFuture;
   String _primaryIndustryCode = 'GENERAL_CUSTOM';
@@ -281,6 +282,29 @@ class _CreateTenantDialogState extends State<CreateTenantDialog> {
                 _buildTextField(_hostController, 'Host', Icons.language_rounded, required: true),
                 const SizedBox(height: 12),
                 _buildTextField(_urlController, 'ERP App URL (Optional)', Icons.link_rounded),
+                const SizedBox(height: 12),
+                DropdownButtonFormField<String>(
+                  value: _tenantType,
+                  decoration: const InputDecoration(
+                    labelText: 'Tenant Type',
+                    prefixIcon: Icon(Icons.apartment_rounded),
+                  ),
+                  items: const [
+                    DropdownMenuItem(value: 'CUSTOMER', child: Text('Customer')),
+                    DropdownMenuItem(value: 'INTERNAL', child: Text('Internal')),
+                    DropdownMenuItem(value: 'PLATFORM_OPERATOR', child: Text('Platform Operator')),
+                  ],
+                  onChanged: (value) => setState(() {
+                    _tenantType = value ?? 'CUSTOMER';
+                    if (_tenantType == 'PLATFORM_OPERATOR') {
+                      _idController.clear();
+                      _nameController.text = 'Mawa Software Pty Ltd';
+                      _hostController.text = 'web.app.mawa.co.za';
+                      _urlController.text = 'https://web.app.mawa.co.za';
+                      _status = 'ACTIVE';
+                    }
+                  }),
+                ),
                 const SizedBox(height: 12),
                 DropdownButtonFormField<String>(
                   value: _status,
@@ -437,6 +461,9 @@ class _CreateTenantDialogState extends State<CreateTenantDialog> {
           url: _urlController.text.isEmpty ? null : _urlController.text,
           erpAppUrl: _urlController.text.isEmpty ? null : _urlController.text,
           status: _status,
+          tenantType: _tenantType,
+          billingExempt: _tenantType == 'PLATFORM_OPERATOR',
+          protectedFromSuspension: _tenantType == 'PLATFORM_OPERATOR',
           databaseUrl: _dbUrlController.text.isEmpty ? null : _dbUrlController.text,
           databaseUsername: _dbUserController.text.isEmpty ? null : _dbUserController.text,
           databasePassword: _dbPassController.text.isEmpty ? null : _dbPassController.text,
