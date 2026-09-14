@@ -1009,8 +1009,16 @@ class _BillingManagementScreenState extends State<BillingManagementScreen> {
       return;
     }
     if (!mounted || plans.isEmpty) return;
+    Tenant? selectedTenant;
+    for (final tenant in _tenants) {
+      if (tenant.id == _selectedTenantId) {
+        selectedTenant = tenant;
+        break;
+      }
+    }
+    final billingExempt = selectedTenant?.billingExempt == true;
     String planCode = current?.planCode ?? plans.first.code;
-    String status = current?.status ?? 'ACTIVE';
+    String status = billingExempt ? 'INTERNAL' : (current?.status ?? 'ACTIVE');
     String cycle = current?.billingCycle ?? 'MONTHLY';
     final amountOverride = TextEditingController(text: current?.amountOverride?.toStringAsFixed(2) ?? '');
     final notes = TextEditingController(text: current?.notes ?? '');
@@ -1041,8 +1049,8 @@ class _BillingManagementScreenState extends State<BillingManagementScreen> {
                     child: DropdownButtonFormField<String>(
                       value: status,
                       decoration: const InputDecoration(labelText: 'Status'),
-                      items: ['TRIAL', 'ACTIVE', 'SUSPENDED', 'CANCELLED'].map((value) => DropdownMenuItem(value: value, child: Text(value))).toList(),
-                      onChanged: (value) => setDialogState(() => status = value ?? status),
+                      items: (billingExempt ? ['INTERNAL'] : ['TRIAL', 'ACTIVE', 'SUSPENDED', 'CANCELLED']).map((value) => DropdownMenuItem(value: value, child: Text(value))).toList(),
+                      onChanged: billingExempt ? null : (value) => setDialogState(() => status = value ?? status),
                     ),
                   ),
                   const SizedBox(width: 12),
