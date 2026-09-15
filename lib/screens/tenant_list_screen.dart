@@ -292,6 +292,7 @@ class _CreateTenantDialogState extends State<CreateTenantDialog> {
                   ),
                   items: const [
                     DropdownMenuItem(value: 'CUSTOMER', child: Text('Customer')),
+                    DropdownMenuItem(value: 'RESELLER', child: Text('Reseller')),
                     DropdownMenuItem(value: 'INTERNAL', child: Text('Internal')),
                     DropdownMenuItem(value: 'PLATFORM_OPERATOR', child: Text('Platform Operator')),
                   ],
