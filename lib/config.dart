@@ -86,11 +86,11 @@ class AppConfig {
   static String platformOperatorTenantHostFor(Environment targetEnvironment) {
     switch (targetEnvironment) {
       case Environment.dev:
-        return 'web.dev.app.mawa.co.za';
+        return 'web-dev.app.mawa.co.za';
       case Environment.alpha:
-        return 'web.alpha.app.mawa.co.za';
+        return 'web-alpha.app.mawa.co.za';
       case Environment.beta:
-        return 'web.beta.app.mawa.co.za';
+        return 'web-beta.app.mawa.co.za';
       case Environment.prod:
         return 'web.app.mawa.co.za';
     }

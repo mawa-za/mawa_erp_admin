@@ -5,15 +5,15 @@ void main() {
   test('maps the platform operator tenant host for every environment', () {
     expect(
       AppConfig.platformOperatorTenantHostFor(Environment.dev),
-      'web.dev.app.mawa.co.za',
+      'web-dev.app.mawa.co.za',
     );
     expect(
       AppConfig.platformOperatorTenantHostFor(Environment.alpha),
-      'web.alpha.app.mawa.co.za',
+      'web-alpha.app.mawa.co.za',
     );
     expect(
       AppConfig.platformOperatorTenantHostFor(Environment.beta),
-      'web.beta.app.mawa.co.za',
+      'web-beta.app.mawa.co.za',
     );
     expect(
       AppConfig.platformOperatorTenantHostFor(Environment.prod),
