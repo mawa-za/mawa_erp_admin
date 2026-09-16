@@ -42,6 +42,24 @@ class ResellerService {
     return ResellerTenantAssignment.fromJson(jsonDecode(response.body));
   }
 
+  Future<List<ResellerEmployeeAccess>> employeeAccess(String resellerTenantId) async {
+    final response = await _client.get(
+      Uri.parse('${AppConfig.apiBaseUrl}/v2/resellers/$resellerTenantId/employees'), headers: await _headers(),
+    );
+    if (response.statusCode != 200) throw AppException(_message(response.body, 'Failed to load employee access'));
+    return (jsonDecode(response.body) as List)
+        .map((item) => ResellerEmployeeAccess.fromJson(Map<String, dynamic>.from(item))).toList();
+  }
+
+  Future<ResellerEmployeeAccess> saveEmployeeAccess(ResellerEmployeeAccess access) async {
+    final response = await _client.post(
+      Uri.parse('${AppConfig.apiBaseUrl}/v2/resellers/${access.resellerTenantId}/employees'),
+      headers: await _headers(), body: jsonEncode(access.toJson()),
+    );
+    if (response.statusCode != 200) throw AppException(_message(response.body, 'Failed to save employee access'));
+    return ResellerEmployeeAccess.fromJson(jsonDecode(response.body));
+  }
+
   String _message(String body, String fallback) {
     if (body.isEmpty) return fallback;
     try { return (jsonDecode(body) as Map<String, dynamic>)['message']?.toString() ?? fallback; } catch (_) { return body; }
