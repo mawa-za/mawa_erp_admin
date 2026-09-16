@@ -118,3 +118,43 @@ class ResellerTenantAssignment {
         'validTo': validTo,
       };
 }
+
+class ResellerEmployeeAccess {
+  final String? id;
+  final String resellerTenantId;
+  final String clientTenantId;
+  final String clientTenantName;
+  final String employeeUsername;
+  final String? employeeDisplayName;
+  final String accessLevel;
+  final bool mayRequestElevatedAccess;
+  final String status;
+  final String? validFrom;
+  final String? validTo;
+
+  const ResellerEmployeeAccess({
+    this.id, required this.resellerTenantId, required this.clientTenantId,
+    this.clientTenantName = '', required this.employeeUsername, this.employeeDisplayName,
+    this.accessLevel = 'READ_ONLY', this.mayRequestElevatedAccess = false,
+    this.status = 'ACTIVE', this.validFrom, this.validTo,
+  });
+
+  factory ResellerEmployeeAccess.fromJson(Map<String, dynamic> json) => ResellerEmployeeAccess(
+    id: json['id']?.toString(), resellerTenantId: (json['resellerTenantId'] ?? '').toString(),
+    clientTenantId: (json['clientTenantId'] ?? '').toString(),
+    clientTenantName: (json['clientTenantName'] ?? '').toString(),
+    employeeUsername: (json['employeeUsername'] ?? '').toString(),
+    employeeDisplayName: json['employeeDisplayName']?.toString(),
+    accessLevel: (json['accessLevel'] ?? 'READ_ONLY').toString(),
+    mayRequestElevatedAccess: json['mayRequestElevatedAccess'] == true,
+    status: (json['status'] ?? 'ACTIVE').toString(), validFrom: json['validFrom']?.toString(),
+    validTo: json['validTo']?.toString(),
+  );
+
+  Map<String, dynamic> toJson() => {
+    'clientTenantId': clientTenantId, 'employeeUsername': employeeUsername,
+    'employeeDisplayName': employeeDisplayName, 'accessLevel': accessLevel,
+    'mayRequestElevatedAccess': mayRequestElevatedAccess, 'status': status,
+    'validFrom': validFrom, 'validTo': validTo,
+  };
+}

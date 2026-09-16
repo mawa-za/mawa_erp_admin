@@ -82,9 +82,13 @@ class ResellerDetailScreen extends StatefulWidget {
 class _ResellerDetailScreenState extends State<ResellerDetailScreen> {
   final _service = ResellerService();
   late Future<List<ResellerTenantAssignment>> _assignments;
+  late Future<List<ResellerEmployeeAccess>> _employeeAccess;
   @override
   void initState() { super.initState(); _refresh(); }
-  void _refresh() => setState(() => _assignments = _service.assignments(widget.profile.tenantId));
+  void _refresh() => setState(() {
+    _assignments = _service.assignments(widget.profile.tenantId);
+    _employeeAccess = _service.employeeAccess(widget.profile.tenantId);
+  });
 
   @override
   Widget build(BuildContext context) => Scaffold(
@@ -93,33 +97,50 @@ class _ResellerDetailScreenState extends State<ResellerDetailScreen> {
         ]),
         body: Column(children: [
           _summary(),
-          Expanded(child: FutureBuilder<List<ResellerTenantAssignment>>(
-            future: _assignments,
-            builder: (context, snapshot) {
-              if (snapshot.connectionState == ConnectionState.waiting) return const Center(child: CircularProgressIndicator());
-              if (snapshot.hasError) return _ErrorState(error: snapshot.error, retry: _refresh);
-              final assignments = snapshot.data ?? const [];
-              if (assignments.isEmpty) return const Center(child: Text('No client tenants are assigned to this reseller.'));
-              return ListView.builder(
-                padding: const EdgeInsets.fromLTRB(20, 0, 20, 20), itemCount: assignments.length,
-                itemBuilder: (context, index) {
-                  final item = assignments[index];
-                  return Card(child: ListTile(
-                    leading: const Icon(Icons.business_rounded),
-                    title: Text(item.clientTenantName),
-                    subtitle: Text('${item.clientTenantHost ?? ''}\n${_label(item.supportLevel)} • ${_label(item.billingResponsibility)}'),
-                    isThreeLine: true,
-                    trailing: Chip(label: Text(_label(item.status))),
-                  ));
-                },
-              );
-            },
-          )),
+          Expanded(child: DefaultTabController(length: 2, child: Column(children: [
+            const TabBar(tabs: [Tab(icon: Icon(Icons.business_rounded), text: 'Client tenants'), Tab(icon: Icon(Icons.badge_outlined), text: 'Employee access')]),
+            Expanded(child: TabBarView(children: [_clientList(), _employeeList()])),
+          ]))),
         ]),
         floatingActionButton: FloatingActionButton.extended(
           onPressed: _assignTenant, icon: const Icon(Icons.link_rounded), label: const Text('Assign tenant'),
         ),
       );
+
+  Widget _clientList() => FutureBuilder<List<ResellerTenantAssignment>>(
+    future: _assignments, builder: (context, snapshot) {
+      if (snapshot.connectionState == ConnectionState.waiting) return const Center(child: CircularProgressIndicator());
+      if (snapshot.hasError) return _ErrorState(error: snapshot.error, retry: _refresh);
+      final assignments = snapshot.data ?? const [];
+      if (assignments.isEmpty) return const Center(child: Text('No client tenants are assigned to this reseller.'));
+      return ListView.builder(padding: const EdgeInsets.all(20), itemCount: assignments.length, itemBuilder: (context, index) {
+        final item = assignments[index];
+        return Card(child: ListTile(leading: const Icon(Icons.business_rounded), title: Text(item.clientTenantName),
+          subtitle: Text('${item.clientTenantHost ?? ''}\n${_label(item.supportLevel)} • ${_label(item.billingResponsibility)}'),
+          isThreeLine: true, trailing: Chip(label: Text(_label(item.status)))));
+      });
+    });
+
+  Widget _employeeList() => FutureBuilder<List<ResellerEmployeeAccess>>(
+    future: _employeeAccess, builder: (context, snapshot) {
+      if (snapshot.connectionState == ConnectionState.waiting) return const Center(child: CircularProgressIndicator());
+      if (snapshot.hasError) return _ErrorState(error: snapshot.error, retry: _refresh);
+      final access = snapshot.data ?? const [];
+      return Column(children: [
+        Padding(padding: const EdgeInsets.fromLTRB(20, 16, 20, 4), child: Row(children: [
+          const Expanded(child: Text('Grant each reseller employee access only to the client tenants they support.')),
+          FilledButton.icon(onPressed: _grantEmployeeAccess, icon: const Icon(Icons.person_add_alt_1), label: const Text('Grant access')),
+        ])),
+        Expanded(child: access.isEmpty ? const Center(child: Text('No employee access has been configured.'))
+          : ListView.builder(padding: const EdgeInsets.all(20), itemCount: access.length, itemBuilder: (context, index) {
+            final item = access[index];
+            return Card(child: ListTile(leading: const CircleAvatar(child: Icon(Icons.support_agent_rounded)),
+              title: Text(item.employeeDisplayName?.isNotEmpty == true ? item.employeeDisplayName! : item.employeeUsername),
+              subtitle: Text('${item.employeeUsername}\n${item.clientTenantName} • ${_label(item.accessLevel)}'), isThreeLine: true,
+              trailing: Chip(label: Text(_label(item.status))), onTap: () => _grantEmployeeAccess(existing: item)));
+          })),
+      ]);
+    });
 
   Widget _summary() => Padding(
         padding: const EdgeInsets.all(20),
@@ -151,6 +172,20 @@ class _ResellerDetailScreenState extends State<ResellerDetailScreen> {
       builder: (_) => _AssignmentDialog(resellerTenantId: widget.profile.tenantId, tenants: candidates));
     if (result == null) return;
     try { await _service.assign(result); _refresh(); }
+    catch (e) { if (mounted) _error(context, e); }
+  }
+
+  Future<void> _grantEmployeeAccess({ResellerEmployeeAccess? existing}) async {
+    final assignments = await _assignments;
+    if (!mounted) return;
+    if (assignments.where((item) => item.status == 'ACTIVE').isEmpty) {
+      _error(context, AppException('Assign an active client tenant before granting employee access.'));
+      return;
+    }
+    final result = await showDialog<ResellerEmployeeAccess>(context: context, builder: (_) => _EmployeeAccessDialog(
+      resellerTenantId: widget.profile.tenantId, assignments: assignments, existing: existing));
+    if (result == null) return;
+    try { await _service.saveEmployeeAccess(result); _refresh(); }
     catch (e) { if (mounted) _error(context, e); }
   }
 }
@@ -215,6 +250,73 @@ class _AssignmentDialogState extends State<_AssignmentDialog> {
     resellerTenantId: widget.resellerTenantId, clientTenantId: _client!, supportLevel: _support,
     billingResponsibility: _billing, primaryReseller: _primary)); }
 }
+
+class _EmployeeAccessDialog extends StatefulWidget {
+  final String resellerTenantId;
+  final List<ResellerTenantAssignment> assignments;
+  final ResellerEmployeeAccess? existing;
+  const _EmployeeAccessDialog({required this.resellerTenantId, required this.assignments, this.existing});
+  @override State<_EmployeeAccessDialog> createState() => _EmployeeAccessDialogState();
+}
+
+class _EmployeeAccessDialogState extends State<_EmployeeAccessDialog> {
+  final _form = GlobalKey<FormState>();
+  late String? _clientId;
+  late String _accessLevel;
+  late String _status;
+  late bool _mayElevate;
+  late final TextEditingController _username, _displayName, _validFrom, _validTo;
+  @override void initState() {
+    super.initState(); final current = widget.existing;
+    _clientId = current?.clientTenantId; _accessLevel = current?.accessLevel ?? 'READ_ONLY';
+    _status = current?.status ?? 'ACTIVE'; _mayElevate = current?.mayRequestElevatedAccess ?? false;
+    _username = TextEditingController(text: current?.employeeUsername);
+    _displayName = TextEditingController(text: current?.employeeDisplayName);
+    _validFrom = TextEditingController(text: current?.validFrom ?? DateTime.now().toIso8601String().substring(0, 10));
+    _validTo = TextEditingController(text: current?.validTo);
+  }
+  @override Widget build(BuildContext context) {
+    final clients = widget.assignments.where((item) => item.status == 'ACTIVE').toList()
+      ..sort((a, b) => a.clientTenantName.compareTo(b.clientTenantName));
+    return AlertDialog(title: Text(widget.existing == null ? 'Grant employee access' : 'Edit employee access'),
+      content: SizedBox(width: 540, child: Form(key: _form, child: SingleChildScrollView(child: Column(mainAxisSize: MainAxisSize.min, children: [
+        DropdownButtonFormField<String>(value: _clientId, decoration: const InputDecoration(labelText: 'Client tenant'),
+          items: clients.map((item) => DropdownMenuItem(value: item.clientTenantId, child: Text(item.clientTenantName))).toList(),
+          onChanged: widget.existing == null ? (value) => setState(() => _clientId = value) : null,
+          validator: (value) => value == null ? 'Select a client tenant' : null),
+        const SizedBox(height: 12), TextFormField(controller: _username, enabled: widget.existing == null,
+          decoration: const InputDecoration(labelText: 'Employee username', helperText: 'Use the exact MAWA sign-in username.'),
+          validator: (value) => value == null || value.trim().isEmpty ? 'Employee username is required' : null),
+        const SizedBox(height: 12), TextFormField(controller: _displayName, decoration: const InputDecoration(labelText: 'Display name')),
+        const SizedBox(height: 12), DropdownButtonFormField<String>(value: _accessLevel, decoration: const InputDecoration(labelText: 'Access level'),
+          items: const ['READ_ONLY', 'SUPPORT_OPERATOR'].map((value) => DropdownMenuItem(value: value, child: Text(_label(value)))).toList(),
+          onChanged: (value) => setState(() => _accessLevel = value!)),
+        SwitchListTile(value: _mayElevate, contentPadding: EdgeInsets.zero, title: const Text('May request support-operator access'),
+          onChanged: (value) => setState(() => _mayElevate = value)),
+        Row(children: [Expanded(child: TextFormField(controller: _validFrom, decoration: const InputDecoration(labelText: 'Valid from (YYYY-MM-DD)'),
+          validator: _dateValidator)), const SizedBox(width: 12), Expanded(child: TextFormField(controller: _validTo,
+          decoration: const InputDecoration(labelText: 'Valid to (optional)'), validator: _optionalDateValidator))]),
+        const SizedBox(height: 12), DropdownButtonFormField<String>(value: _status, decoration: const InputDecoration(labelText: 'Status'),
+          items: const ['ACTIVE', 'SUSPENDED', 'ENDED'].map((value) => DropdownMenuItem(value: value, child: Text(_label(value)))).toList(),
+          onChanged: (value) => setState(() => _status = value!)),
+      ])))), actions: [TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
+        FilledButton(onPressed: _save, child: const Text('Save access'))]);
+  }
+  void _save() {
+    if (!_form.currentState!.validate()) return;
+    Navigator.pop(context, ResellerEmployeeAccess(id: widget.existing?.id, resellerTenantId: widget.resellerTenantId,
+      clientTenantId: _clientId!, clientTenantName: widget.existing?.clientTenantName ?? '',
+      employeeUsername: _username.text.trim(), employeeDisplayName: _displayName.text.trim(),
+      accessLevel: _accessLevel, mayRequestElevatedAccess: _mayElevate, status: _status,
+      validFrom: _validFrom.text.trim(), validTo: _validTo.text.trim().isEmpty ? null : _validTo.text.trim()));
+  }
+}
+
+String? _dateValidator(String? value) {
+  if (value == null || value.trim().isEmpty) return 'Date is required';
+  return DateTime.tryParse(value.trim()) == null ? 'Use YYYY-MM-DD' : null;
+}
+String? _optionalDateValidator(String? value) => value == null || value.trim().isEmpty ? null : _dateValidator(value);
 
 class _ErrorState extends StatelessWidget { final Object? error; final VoidCallback retry; const _ErrorState({required this.error, required this.retry});
   @override Widget build(BuildContext context) => Center(child: Column(mainAxisSize: MainAxisSize.min, children: [Text(friendlyErrorMessage(error)), const SizedBox(height: 12), FilledButton(onPressed: retry, child: const Text('Retry'))])); }
