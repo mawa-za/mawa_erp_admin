@@ -17,6 +17,7 @@ class _TenantListScreenState extends State<TenantListScreen> {
   final TenantService _tenantService = TenantService();
   late Future<List<Tenant>> _tenantsFuture;
   String _selectedStatus = 'ALL';
+  final Set<String> _retryingTenantIds = <String>{};
 
   @override
   void initState() {
@@ -113,7 +114,7 @@ class _TenantListScreenState extends State<TenantListScreen> {
             itemCount: tenants.length,
             itemBuilder: (context, index) {
               final tenant = tenants[index];
-              final isActive = tenant.status == 'ACTIVE';
+              final statusColor = _statusColor(tenant.status);
               
               return Card(
                 margin: const EdgeInsets.only(bottom: 12),
@@ -165,18 +166,26 @@ class _TenantListScreenState extends State<TenantListScreen> {
                         Container(
                           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                           decoration: BoxDecoration(
-                            color: isActive ? Colors.green.shade50 : Colors.red.shade50,
+                            color: statusColor.withOpacity(0.1),
                             borderRadius: BorderRadius.circular(20),
                           ),
                           child: Text(
                             tenant.status,
-                            style: TextStyle(
-                              color: isActive ? Colors.green.shade700 : Colors.red.shade700,
-                              fontSize: 11,
-                              fontWeight: FontWeight.bold,
-                            ),
+                            style: TextStyle(color: statusColor, fontSize: 11, fontWeight: FontWeight.bold),
                           ),
                         ),
+                        if (tenant.provisioningFailed) ...[
+                          const SizedBox(width: 6),
+                          IconButton(
+                            tooltip: 'Retry tenant provisioning',
+                            onPressed: _retryingTenantIds.contains(tenant.id)
+                                ? null
+                                : () => _retryProvisioning(tenant),
+                            icon: _retryingTenantIds.contains(tenant.id)
+                                ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2))
+                                : const Icon(Icons.refresh_rounded),
+                          ),
+                        ],
                         const SizedBox(width: 8),
                         Icon(Icons.chevron_right_rounded, color: Colors.grey.shade400),
                       ],
@@ -206,6 +215,54 @@ class _TenantListScreenState extends State<TenantListScreen> {
       .map((part) => '${part[0].toUpperCase()}${part.substring(1)}')
       .join(' ');
 
+  Color _statusColor(String status) {
+    switch (status.toUpperCase()) {
+      case 'ACTIVE':
+        return Colors.green.shade700;
+      case 'PROVISIONING':
+        return Colors.orange.shade700;
+      case 'SUSPENDED':
+        return Colors.orange.shade800;
+      case 'INACTIVE':
+        return Colors.grey.shade700;
+      default:
+        return Colors.red.shade700;
+    }
+  }
+
+  Future<void> _retryProvisioning(Tenant tenant) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Retry tenant provisioning?'),
+        content: Text('A dedicated Flyway provisioning job will be started for ${tenant.name}.'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),
+          FilledButton(onPressed: () => Navigator.pop(context, true), child: const Text('Retry Provisioning')),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+    setState(() => _retryingTenantIds.add(tenant.id));
+    try {
+      await _tenantService.retryTenantProvisioning(tenant.id);
+      if (!mounted) return;
+      _refreshTenants();
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Tenant provisioning job started.')),
+      );
+    } catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text(friendlyErrorMessage('Provisioning retry failed: $error')),
+          backgroundColor: Colors.red,
+        ));
+      }
+    } finally {
+      if (mounted) setState(() => _retryingTenantIds.remove(tenant.id));
+    }
+  }
+
   void _showCreateTenantDialog() {
     showDialog(
       context: context,
@@ -234,7 +291,7 @@ class _CreateTenantDialogState extends State<CreateTenantDialog> {
   final _dbUrlController = TextEditingController();
   final _dbUserController = TextEditingController();
   final _dbPassController = TextEditingController();
-  String _status = 'ACTIVE';
+  String _status = 'PROVISIONING';
   String _tenantType = 'CUSTOMER';
   bool _isLoading = false;
   late Future<List<IndustryProfile>> _profilesFuture;
@@ -303,21 +360,16 @@ class _CreateTenantDialogState extends State<CreateTenantDialog> {
                       _nameController.text = 'Mawa Software Pty Ltd';
                       _hostController.text = AppConfig.platformOperatorTenantHost;
                       _urlController.text = AppConfig.platformOperatorTenantUrl;
-                      _status = 'ACTIVE';
+                      _status = 'PROVISIONING';
                     }
                   }),
                 ),
                 const SizedBox(height: 12),
-                DropdownButtonFormField<String>(
-                  value: _status,
-                  decoration: const InputDecoration(
-                    labelText: 'Status',
-                    prefixIcon: Icon(Icons.info_outline_rounded),
-                  ),
-                  items: ['ACTIVE', 'INACTIVE', 'SUSPENDED']
-                      .map((s) => DropdownMenuItem(value: s, child: Text(s)))
-                      .toList(),
-                  onChanged: (v) => setState(() => _status = v!),
+                const ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  leading: Icon(Icons.sync_rounded),
+                  title: Text('Automatic provisioning'),
+                  subtitle: Text('The tenant remains in PROVISIONING until its dedicated Flyway job completes.'),
                 ),
                 const SizedBox(height: 24),
                 _buildSectionTitle('Industry Profile'),
