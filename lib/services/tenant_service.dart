@@ -61,6 +61,28 @@ class TenantService {
     }
   }
 
+  Future<Tenant> getTenant(String tenantId) async {
+    final response = await _client.get(
+      Uri.parse('${AppConfig.apiBaseUrl}/tenant/$tenantId'),
+      headers: await _getHeaders(),
+    );
+    if (response.statusCode == 200) {
+      return Tenant.fromJson(jsonDecode(response.body) as Map<String, dynamic>);
+    }
+    throw AppException(response.body.isNotEmpty ? response.body : 'Failed to load tenant');
+  }
+
+  Future<Tenant> retryTenantProvisioning(String tenantId) async {
+    final response = await _client.post(
+      Uri.parse('${AppConfig.apiBaseUrl}/tenant/$tenantId/provision/retry'),
+      headers: await _getHeaders(),
+    );
+    if (response.statusCode == 200 || response.statusCode == 202) {
+      return Tenant.fromJson(jsonDecode(response.body) as Map<String, dynamic>);
+    }
+    throw AppException(response.body.isNotEmpty ? response.body : 'Failed to retry tenant provisioning');
+  }
+
   Future<List<IndustryProfile>> getIndustryProfiles({bool activeOnly = false}) async {
     final uri = Uri.parse('${AppConfig.apiBaseUrl}/industry-profile').replace(
       queryParameters: {'activeOnly': activeOnly.toString()},

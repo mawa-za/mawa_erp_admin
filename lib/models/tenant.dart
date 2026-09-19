@@ -12,6 +12,9 @@ class Tenant {
   final String? subscriptionStatus;
   final String? primaryIndustryCode;
   final List<String> additionalIndustryCodes;
+  final String? provisioningOperation;
+  final String? provisioningError;
+  final String? provisionedAt;
 
   Tenant({
     required this.id,
@@ -27,6 +30,9 @@ class Tenant {
     this.subscriptionStatus,
     this.primaryIndustryCode,
     this.additionalIndustryCodes = const [],
+    this.provisioningOperation,
+    this.provisioningError,
+    this.provisionedAt,
   });
 
   factory Tenant.fromJson(Map<String, dynamic> json) {
@@ -46,6 +52,9 @@ class Tenant {
       additionalIndustryCodes: (json['additionalIndustryCodes'] as List<dynamic>? ?? const [])
           .map((item) => item.toString())
           .toList(),
+      provisioningOperation: json['provisioningOperation']?.toString(),
+      provisioningError: json['provisioningError']?.toString(),
+      provisionedAt: json['provisionedAt']?.toString(),
     );
   }
 
@@ -64,8 +73,14 @@ class Tenant {
       'subscriptionStatus': subscriptionStatus,
       'primaryIndustryCode': primaryIndustryCode,
       'additionalIndustryCodes': additionalIndustryCodes,
+      'provisioningOperation': provisioningOperation,
+      'provisioningError': provisioningError,
+      'provisionedAt': provisionedAt,
     };
   }
+
+  bool get provisioningInProgress => status.toUpperCase() == 'PROVISIONING';
+  bool get provisioningFailed => status.toUpperCase() == 'PROVISIONING_FAILED';
 }
 
 class CreateTenantRequest {
