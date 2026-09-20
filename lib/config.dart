@@ -76,4 +76,26 @@ class AppConfig {
         return 'https://admin.app.mawa.co.za';
     }
   }
+
+  /// Canonical host for Mawa Software's platform-operator tenant in the
+  /// currently selected environment.
+  static String get platformOperatorTenantHost =>
+      platformOperatorTenantHostFor(environment);
+
+  @visibleForTesting
+  static String platformOperatorTenantHostFor(Environment targetEnvironment) {
+    switch (targetEnvironment) {
+      case Environment.dev:
+        return 'web-dev.app.mawa.co.za';
+      case Environment.alpha:
+        return 'web-alpha.app.mawa.co.za';
+      case Environment.beta:
+        return 'web-beta.app.mawa.co.za';
+      case Environment.prod:
+        return 'web.app.mawa.co.za';
+    }
+  }
+
+  static String get platformOperatorTenantUrl =>
+      'https://$platformOperatorTenantHost';
 }

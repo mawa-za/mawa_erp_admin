@@ -34,6 +34,7 @@ class _TenantDetailScreenState extends State<TenantDetailScreen> {
   final TextEditingController _propertySearchController = TextEditingController();
   final TextEditingController _activitySearchController = TextEditingController();
   String _activityCategory = 'ALL';
+  bool _retryingProvisioning = false;
 
   static const List<_TenantSection> _sections = [
     _TenantSection('Overview', Icons.dashboard_outlined),
@@ -64,6 +65,16 @@ class _TenantDetailScreenState extends State<TenantDetailScreen> {
       _industryProfileFuture = _tenantService.getTenantIndustryProfile(_tenant.id);
       _industryCatalogueFuture = _tenantService.getIndustryProfiles();
     });
+    unawaited(_refreshTenant());
+  }
+
+  Future<void> _refreshTenant() async {
+    try {
+      final tenant = await _tenantService.getTenant(_tenant.id);
+      if (mounted) setState(() => _tenant = tenant);
+    } catch (_) {
+      // The section-level refreshes still provide their own error handling.
+    }
   }
 
   void _refreshProperties() {
@@ -247,10 +258,93 @@ class _TenantDetailScreenState extends State<TenantDetailScreen> {
             _buildDetailRow('Host', _tenant.host),
             _buildDetailRow('ERP URL', _tenant.erpAppUrl ?? _tenant.url ?? '-'),
             _buildDetailRow('Status', _tenant.status, color: _statusColor(_tenant.status)),
+            if (_tenant.provisionedAt != null)
+              _buildDetailRow('Provisioned', _tenant.provisionedAt!),
+            if (_tenant.provisioningInProgress || _tenant.provisioningFailed) ...[
+              const SizedBox(height: 12),
+              _buildProvisioningPanel(),
+            ],
           ],
         ),
       ),
     );
+  }
+
+  Widget _buildProvisioningPanel() {
+    final failed = _tenant.provisioningFailed;
+    final color = failed ? Colors.red : Colors.orange;
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.08),
+        border: Border.all(color: color.withOpacity(0.35)),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(failed ? Icons.error_outline_rounded : Icons.sync_rounded, color: color),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  failed ? 'Tenant provisioning failed' : 'Tenant provisioning is running',
+                  style: TextStyle(fontWeight: FontWeight.bold, color: color),
+                ),
+              ),
+              if (failed)
+                FilledButton.icon(
+                  onPressed: _retryingProvisioning ? null : _confirmRetryProvisioning,
+                  icon: _retryingProvisioning
+                      ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
+                      : const Icon(Icons.refresh_rounded, size: 18),
+                  label: Text(_retryingProvisioning ? 'Starting…' : 'Retry Provisioning'),
+                ),
+            ],
+          ),
+          if (_tenant.provisioningError != null && _tenant.provisioningError!.isNotEmpty) ...[
+            const SizedBox(height: 10),
+            SelectableText(_tenant.provisioningError!, style: const TextStyle(fontSize: 13)),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Future<void> _confirmRetryProvisioning() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Retry tenant provisioning?'),
+        content: Text('A dedicated Flyway provisioning job will be started for ${_tenant.name}.'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),
+          FilledButton(onPressed: () => Navigator.pop(context, true), child: const Text('Retry Provisioning')),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+    setState(() => _retryingProvisioning = true);
+    try {
+      final tenant = await _tenantService.retryTenantProvisioning(_tenant.id);
+      if (!mounted) return;
+      setState(() => _tenant = tenant);
+      _refreshAll();
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Tenant provisioning job started.')),
+      );
+    } catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text(friendlyErrorMessage('Provisioning retry failed: $error')),
+          backgroundColor: Colors.red,
+        ));
+      }
+    } finally {
+      if (mounted) setState(() => _retryingProvisioning = false);
+    }
   }
 
   Widget _buildIndustryExperienceCard({bool compact = false}) {
@@ -1303,6 +1397,10 @@ class _TenantDetailScreenState extends State<TenantDetailScreen> {
         return Colors.green;
       case 'SUSPENDED':
         return Colors.orange;
+      case 'PROVISIONING':
+        return Colors.orange;
+      case 'PROVISIONING_FAILED':
+        return Colors.red;
       default:
         return Colors.red;
     }
