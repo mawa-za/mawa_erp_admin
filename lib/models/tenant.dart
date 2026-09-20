@@ -5,10 +5,16 @@ class Tenant {
   final String? url;
   final String? erpAppUrl;
   final String status;
+  final String tenantType;
+  final bool billingExempt;
+  final bool protectedFromSuspension;
   final String? subscriptionPlanCode;
   final String? subscriptionStatus;
   final String? primaryIndustryCode;
   final List<String> additionalIndustryCodes;
+  final String? provisioningOperation;
+  final String? provisioningError;
+  final String? provisionedAt;
 
   Tenant({
     required this.id,
@@ -17,10 +23,16 @@ class Tenant {
     this.url,
     this.erpAppUrl,
     required this.status,
+    this.tenantType = 'CUSTOMER',
+    this.billingExempt = false,
+    this.protectedFromSuspension = false,
     this.subscriptionPlanCode,
     this.subscriptionStatus,
     this.primaryIndustryCode,
     this.additionalIndustryCodes = const [],
+    this.provisioningOperation,
+    this.provisioningError,
+    this.provisionedAt,
   });
 
   factory Tenant.fromJson(Map<String, dynamic> json) {
@@ -31,12 +43,18 @@ class Tenant {
       url: json['url']?.toString(),
       erpAppUrl: (json['erpAppUrl'] ?? json['url'])?.toString(),
       status: (json['status'] ?? 'ACTIVE').toString(),
+      tenantType: (json['tenantType'] ?? 'CUSTOMER').toString(),
+      billingExempt: json['billingExempt'] == true,
+      protectedFromSuspension: json['protectedFromSuspension'] == true,
       subscriptionPlanCode: json['subscriptionPlanCode']?.toString(),
       subscriptionStatus: json['subscriptionStatus']?.toString(),
       primaryIndustryCode: json['primaryIndustryCode']?.toString(),
       additionalIndustryCodes: (json['additionalIndustryCodes'] as List<dynamic>? ?? const [])
           .map((item) => item.toString())
           .toList(),
+      provisioningOperation: json['provisioningOperation']?.toString(),
+      provisioningError: json['provisioningError']?.toString(),
+      provisionedAt: json['provisionedAt']?.toString(),
     );
   }
 
@@ -48,12 +66,21 @@ class Tenant {
       'url': url,
       'erpAppUrl': erpAppUrl ?? url,
       'status': status,
+      'tenantType': tenantType,
+      'billingExempt': billingExempt,
+      'protectedFromSuspension': protectedFromSuspension,
       'subscriptionPlanCode': subscriptionPlanCode,
       'subscriptionStatus': subscriptionStatus,
       'primaryIndustryCode': primaryIndustryCode,
       'additionalIndustryCodes': additionalIndustryCodes,
+      'provisioningOperation': provisioningOperation,
+      'provisioningError': provisioningError,
+      'provisionedAt': provisionedAt,
     };
   }
+
+  bool get provisioningInProgress => status.toUpperCase() == 'PROVISIONING';
+  bool get provisioningFailed => status.toUpperCase() == 'PROVISIONING_FAILED';
 }
 
 class CreateTenantRequest {
@@ -63,6 +90,9 @@ class CreateTenantRequest {
   final String? url;
   final String? erpAppUrl;
   final String status;
+  final String tenantType;
+  final bool billingExempt;
+  final bool protectedFromSuspension;
   final String? subscriptionPlanCode;
   final String? subscriptionStatus;
   final String? databaseUrl;
@@ -78,6 +108,9 @@ class CreateTenantRequest {
     this.url,
     this.erpAppUrl,
     required this.status,
+    this.tenantType = 'CUSTOMER',
+    this.billingExempt = false,
+    this.protectedFromSuspension = false,
     this.subscriptionPlanCode,
     this.subscriptionStatus,
     this.databaseUrl,
@@ -95,6 +128,9 @@ class CreateTenantRequest {
       'url': url,
       'erpAppUrl': erpAppUrl ?? url,
       'status': status,
+      'tenantType': tenantType,
+      'billingExempt': billingExempt,
+      'protectedFromSuspension': protectedFromSuspension,
       'subscriptionPlanCode': subscriptionPlanCode,
       'subscriptionStatus': subscriptionStatus,
       'database_url': databaseUrl,
