@@ -46,6 +46,9 @@ class TenantService {
           url: request.url,
           erpAppUrl: request.erpAppUrl ?? request.url,
           status: request.status,
+          tenantType: request.tenantType,
+          billingExempt: request.billingExempt,
+          protectedFromSuspension: request.protectedFromSuspension,
           subscriptionPlanCode: request.subscriptionPlanCode,
           subscriptionStatus: request.subscriptionStatus,
           primaryIndustryCode: request.primaryIndustryCode,
@@ -56,6 +59,28 @@ class TenantService {
     } else {
       throw AppException(response.body.isNotEmpty ? response.body : 'Failed to create tenant');
     }
+  }
+
+  Future<Tenant> getTenant(String tenantId) async {
+    final response = await _client.get(
+      Uri.parse('${AppConfig.apiBaseUrl}/tenant/$tenantId'),
+      headers: await _getHeaders(),
+    );
+    if (response.statusCode == 200) {
+      return Tenant.fromJson(jsonDecode(response.body) as Map<String, dynamic>);
+    }
+    throw AppException(response.body.isNotEmpty ? response.body : 'Failed to load tenant');
+  }
+
+  Future<Tenant> retryTenantProvisioning(String tenantId) async {
+    final response = await _client.post(
+      Uri.parse('${AppConfig.apiBaseUrl}/tenant/$tenantId/provision/retry'),
+      headers: await _getHeaders(),
+    );
+    if (response.statusCode == 200 || response.statusCode == 202) {
+      return Tenant.fromJson(jsonDecode(response.body) as Map<String, dynamic>);
+    }
+    throw AppException(response.body.isNotEmpty ? response.body : 'Failed to retry tenant provisioning');
   }
 
   Future<List<IndustryProfile>> getIndustryProfiles({bool activeOnly = false}) async {

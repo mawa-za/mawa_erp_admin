@@ -6,6 +6,7 @@ import 'screens/billing_modules_screen.dart';
 import 'screens/billing_management_screen.dart';
 import 'screens/access_management_screen.dart';
 import 'screens/industry_profiles_screen.dart';
+import 'screens/reseller_management_screen.dart';
 import 'services/auth_service.dart';
 import 'services/tenant_service.dart';
 import 'services/access_management_service.dart';
@@ -55,6 +56,7 @@ class MyApp extends StatelessWidget {
         '/billing': (context) => const BillingManagementScreen(),
         '/access': (context) => const AccessManagementScreen(),
         '/industries': (context) => const IndustryProfilesScreen(),
+        '/resellers': (context) => const ResellerManagementScreen(),
       },
     );
   }
@@ -130,6 +132,15 @@ class MyHomePage extends StatelessWidget {
               icon: Icons.business_rounded,
               colour: AdminDesign.red,
               route: '/tenant',
+            ),
+          if (can('TENANT_MANAGEMENT'))
+            const _AdminModule(
+              title: 'Reseller management',
+              description:
+                  'Configure reseller agreements, client assignments and delegated support.',
+              icon: Icons.handshake_rounded,
+              colour: Color(0xFF0F766E),
+              route: '/resellers',
             ),
           if (can('INDUSTRY_PROFILE_MANAGEMENT'))
             const _AdminModule(
