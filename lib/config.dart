@@ -1,6 +1,6 @@
 import 'package:flutter/foundation.dart';
 
-enum Environment { dev, alpha, beta, prod }
+enum Environment { dev, alpha, beta, hotfix, prod }
 
 class AppConfig {
   static Environment get environment {
@@ -15,6 +15,7 @@ class AppConfig {
         case 'dev': return Environment.dev;
         case 'alpha': return Environment.alpha;
         case 'beta': return Environment.beta;
+        case 'hotfix': return Environment.hotfix;
         case 'prod': return Environment.prod;
       }
     }
@@ -30,6 +31,9 @@ class AppConfig {
       }
       if (host.contains('beta.admin.app.mawa.co.za')) {
         return Environment.beta;
+      }
+      if (host.contains('hotfix.admin.app.mawa.co.za')) {
+        return Environment.hotfix;
       }
       if (host.contains('admin.app.mawa.co.za')) {
         return Environment.prod;
@@ -55,6 +59,8 @@ class AppConfig {
         return 'https://alpha.admin.api.app.mawa.co.za';
       case Environment.beta:
         return 'https://beta.admin.api.app.mawa.co.za';
+      case Environment.hotfix:
+        return 'https://hotfix.admin.api.app.mawa.co.za';
       case Environment.prod:
         return 'https://admin.api.app.mawa.co.za';
     }
@@ -72,30 +78,10 @@ class AppConfig {
         return 'https://alpha.admin.app.mawa.co.za';
       case Environment.beta:
         return 'https://beta.admin.app.mawa.co.za';
+      case Environment.hotfix:
+        return 'https://hotfix.admin.app.mawa.co.za';
       case Environment.prod:
         return 'https://admin.app.mawa.co.za';
     }
   }
-
-  /// Canonical host for Mawa Software's platform-operator tenant in the
-  /// currently selected environment.
-  static String get platformOperatorTenantHost =>
-      platformOperatorTenantHostFor(environment);
-
-  @visibleForTesting
-  static String platformOperatorTenantHostFor(Environment targetEnvironment) {
-    switch (targetEnvironment) {
-      case Environment.dev:
-        return 'web-dev.app.mawa.co.za';
-      case Environment.alpha:
-        return 'web-alpha.app.mawa.co.za';
-      case Environment.beta:
-        return 'web-beta.app.mawa.co.za';
-      case Environment.prod:
-        return 'web.app.mawa.co.za';
-    }
-  }
-
-  static String get platformOperatorTenantUrl =>
-      'https://$platformOperatorTenantHost';
 }
