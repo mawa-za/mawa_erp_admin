@@ -84,4 +84,36 @@ class AppConfig {
         return 'https://admin.app.mawa.co.za';
     }
   }
+
+  static String get platformOperatorTenantHost {
+    const fromEnv = String.fromEnvironment(
+      'PLATFORM_OPERATOR_TENANT_HOST',
+      defaultValue: '',
+    );
+    if (fromEnv.isNotEmpty) return fromEnv;
+
+    switch (environment) {
+      case Environment.dev:
+        return 'web.dev.app.mawa.co.za';
+      case Environment.alpha:
+        return 'web.alpha.app.mawa.co.za';
+      case Environment.beta:
+        return 'web.beta.app.mawa.co.za';
+      case Environment.hotfix:
+        return 'web.hotfix.app.mawa.co.za';
+      case Environment.prod:
+        return 'web.app.mawa.co.za';
+    }
+  }
+
+  static String get platformOperatorTenantUrl {
+    const fromEnv = String.fromEnvironment(
+      'PLATFORM_OPERATOR_TENANT_URL',
+      defaultValue: '',
+    );
+    if (fromEnv.isNotEmpty) return fromEnv;
+
+    return 'https://$platformOperatorTenantHost';
+  }
+
 }
