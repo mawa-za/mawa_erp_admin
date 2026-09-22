@@ -100,7 +100,7 @@ class AppConfig {
       case Environment.beta:
         return 'web.beta.app.mawa.co.za';
       case Environment.hotfix:
-        return 'web.hotfix.app.mawa.co.za';
+        return 'web-hotfix.app.mawa.co.za';
       case Environment.prod:
         return 'web.app.mawa.co.za';
     }
