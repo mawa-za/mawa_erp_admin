@@ -36,14 +36,20 @@ class BillingModule {
   final String name;
   final String? description;
   final bool active;
+  final String productType;
+  final int displayOrder;
+  final String? requiredModuleCode;
 
-  const BillingModule({required this.code, required this.name, this.description, required this.active});
+  const BillingModule({required this.code, required this.name, this.description, required this.active, this.productType = 'MODULE', this.displayOrder = 0, this.requiredModuleCode});
 
   factory BillingModule.fromJson(Map<String, dynamic> json) => BillingModule(
         code: json['code']?.toString() ?? '',
         name: json['name']?.toString() ?? '',
         description: json['description']?.toString(),
         active: _asBool(json['active'], fallback: true),
+        productType: json['productType']?.toString() ?? 'MODULE',
+        displayOrder: _asInt(json['displayOrder']),
+        requiredModuleCode: json['requiredModuleCode']?.toString(),
       );
 
   Map<String, dynamic> toJson() => {
@@ -51,6 +57,9 @@ class BillingModule {
         'name': name,
         'description': description,
         'active': active,
+        'productType': productType,
+        'displayOrder': displayOrder,
+        'requiredModuleCode': requiredModuleCode,
       };
 }
 
