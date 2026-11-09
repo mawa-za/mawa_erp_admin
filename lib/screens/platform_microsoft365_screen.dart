@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../services/platform_microsoft365_service.dart';
+import '../config.dart';
 import '../theme/admin_theme.dart';
 
 /// This workcenter configures MAWA's central Microsoft application, never a customer-owned mailbox.
@@ -21,8 +22,23 @@ class _PlatformMicrosoft365ScreenState extends State<PlatformMicrosoft365Screen>
   bool _showSecret = false;
   String? _error;
 
+  String get _suggestedRedirectUri {
+    switch (AppConfig.environment) {
+      case Environment.hotfix:
+        return 'https://hotfix.api.app.mawa.co.za/v2/bank-transactions/microsoft/callback';
+      case Environment.prod:
+        return 'https://api.app.mawa.co.za/v2/bank-transactions/microsoft/callback';
+      default:
+        return '';
+    }
+  }
+
   @override
-  void initState() { super.initState(); _refresh(); }
+  void initState() {
+    super.initState();
+    _redirectUri.text = _suggestedRedirectUri;
+    _refresh();
+  }
   @override
   void dispose() { _clientId.dispose(); _redirectUri.dispose(); _clientSecret.dispose(); super.dispose(); }
 
@@ -34,9 +50,8 @@ class _PlatformMicrosoft365ScreenState extends State<PlatformMicrosoft365Screen>
       setState(() {
         _config = config;
         _clientId.text = config.clientId;
-        _redirectUri.text = config.redirectUri.isEmpty && config.environment == 'hotfix'
-            ? 'https://hotfix.api.app.mawa.co.za/v2/bank-transactions/microsoft/callback'
-            : config.redirectUri;
+        _redirectUri.text = config.redirectUri.isEmpty
+            ? _suggestedRedirectUri : config.redirectUri;
         _clientSecret.clear(); // NEVER retrieve or render the stored secret.
       });
     } catch (error) { if (mounted) setState(() => _error = '$error'); }
@@ -73,7 +88,7 @@ class _PlatformMicrosoft365ScreenState extends State<PlatformMicrosoft365Screen>
               const SizedBox(height: 10),
               const Text('Configure this once for all MAWA customers in this environment. Each customer connects its own Microsoft organization and grants mailbox-scoped access in its ERP tenant. Do not enter any customer mailbox credentials here.'),
               const SizedBox(height: 10),
-              Text('Environment: ${(_config?.environment ?? '').toUpperCase()}',
+              Text('Environment: ${(_config?.environment.isNotEmpty == true ? _config!.environment : AppConfig.environment.name).toUpperCase()}',
                 style: const TextStyle(color: AdminDesign.muted)),
               const SizedBox(height: 8),
               Text(_config?.configured == true ? 'Credentials stored in Secret Manager' : 'Credentials not configured',
@@ -92,6 +107,16 @@ class _PlatformMicrosoft365ScreenState extends State<PlatformMicrosoft365Screen>
                 validator: (value) => value == null || !value.trim().startsWith('https://') ||
                   !value.trim().endsWith('/v2/bank-transactions/microsoft/callback')
                     ? 'Enter the registered MAWA HTTPS callback URL' : null),
+              if (_suggestedRedirectUri.isNotEmpty) ...[
+                Align(alignment: Alignment.centerRight, child: TextButton.icon(
+                  onPressed: _saving ? null : () {
+                    setState(() => _redirectUri.text = _suggestedRedirectUri);
+                    _formKey.currentState?.validate();
+                  },
+                  icon: const Icon(Icons.link_rounded),
+                  label: const Text('Use registered callback URL'),
+                )),
+              ],
               const SizedBox(height: 18),
               TextFormField(controller: _clientSecret, obscureText: !_showSecret,
                 enableSuggestions: false, autocorrect: false,
@@ -109,7 +134,12 @@ class _PlatformMicrosoft365ScreenState extends State<PlatformMicrosoft365Screen>
                   ? 'A client secret is required for initial setup' : null),
               const SizedBox(height: 20),
               if (_error != null) ...[
-                Text(_error!, style: const TextStyle(color: AdminDesign.red)),
+                SelectableText(_error!, style: const TextStyle(color: AdminDesign.red)),
+                Align(alignment: Alignment.centerLeft, child: TextButton.icon(
+                  onPressed: _loading || _saving ? null : _refresh,
+                  icon: const Icon(Icons.refresh_rounded),
+                  label: const Text('Retry loading configuration'),
+                )),
                 const SizedBox(height: 12),
               ],
               Align(alignment: Alignment.centerRight, child: FilledButton.icon(
