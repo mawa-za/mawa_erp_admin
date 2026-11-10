@@ -7,6 +7,7 @@ import 'screens/billing_management_screen.dart';
 import 'screens/access_management_screen.dart';
 import 'screens/industry_profiles_screen.dart';
 import 'screens/reseller_management_screen.dart';
+import 'screens/platform_microsoft365_screen.dart';
 import 'services/auth_service.dart';
 import 'services/tenant_service.dart';
 import 'services/access_management_service.dart';
@@ -57,6 +58,7 @@ class MyApp extends StatelessWidget {
         '/access': (context) => const AccessManagementScreen(),
         '/industries': (context) => const IndustryProfilesScreen(),
         '/resellers': (context) => const ResellerManagementScreen(),
+        '/platform-microsoft365': (context) => const PlatformMicrosoft365Screen(),
       },
     );
   }
@@ -124,6 +126,15 @@ class MyHomePage extends StatelessWidget {
         final width = MediaQuery.sizeOf(context).width;
         final showSidebar = width >= 1040;
         final modules = <_AdminModule>[
+          if (profile.roles.contains('PLATFORM_OWNER') ||
+              (profile.legacyMode && profile.allFeatures))
+            const _AdminModule(
+              title: 'Microsoft 365 integration',
+              description: 'Manage MAWA-owned Microsoft application credentials securely.',
+              icon: Icons.mail_lock_rounded,
+              colour: Color(0xFF2563EB),
+              route: '/platform-microsoft365',
+            ),
           if (can('TENANT_MANAGEMENT'))
             const _AdminModule(
               title: 'Tenant management',
