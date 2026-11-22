@@ -25,6 +25,16 @@ class BillingService {
     return _map(response.body);
   }
 
+  /// Import customer SaaS invoices into the protected operator tenant's staging ledger.
+  Future<Map<String, dynamic>> syncOperatorRevenue() async {
+    final response = await _http.post(
+      Uri.parse('${AppConfig.apiBaseUrl}/billing/platform-operator/sync'),
+      headers: _jsonHeaders,
+    );
+    _ensureSuccess(response.statusCode, response.body);
+    return _map(response.body);
+  }
+
   Future<List<BillingModule>> modules() async {
     final response = await _http.get(Uri.parse('${AppConfig.apiBaseUrl}/billing/modules'));
     _ensureSuccess(response.statusCode, response.body);

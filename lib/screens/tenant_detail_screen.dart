@@ -1432,7 +1432,7 @@ class _TenantDetailScreenState extends State<TenantDetailScreen> {
                 DropdownButtonFormField<String>(
                   value: status,
                   decoration: const InputDecoration(labelText: 'Status'),
-                  items: ['ACTIVE', 'INACTIVE', 'SUSPENDED'].map((value) => DropdownMenuItem(value: value, child: Text(value))).toList(),
+                  items: (_tenant.tenantType == 'PLATFORM_OPERATOR' ? [status, 'ACTIVE'].toSet().toList() : ['ACTIVE', 'INACTIVE', 'SUSPENDED']).map((value) => DropdownMenuItem(value: value, child: Text(value))).toList(),
                   onChanged: isSaving ? null : (value) => setDialogState(() => status = value ?? 'ACTIVE'),
                 ),
               ],
@@ -1455,6 +1455,9 @@ class _TenantDetailScreenState extends State<TenantDetailScreen> {
                             url: urlController.text.trim(),
                             erpAppUrl: urlController.text.trim(),
                             status: status,
+                            tenantType: _tenant.tenantType,
+                            billingExempt: _tenant.billingExempt,
+                            protectedFromSuspension: _tenant.protectedFromSuspension,
                             primaryIndustryCode: _tenant.primaryIndustryCode,
                             additionalIndustryCodes: _tenant.additionalIndustryCodes,
                           ),
@@ -1497,7 +1500,8 @@ class _TenantDetailScreenState extends State<TenantDetailScreen> {
     if (selectedPlan != null && !plans.any((plan) => plan.code == selectedPlan)) {
       selectedPlan = plans.isNotEmpty ? plans.first.code : null;
     }
-    String status = current?.status ?? 'TRIAL';
+    final operator = _tenant.tenantType == 'PLATFORM_OPERATOR';
+    String status = operator ? 'INTERNAL' : (current?.status ?? 'TRIAL');
     String billingCycle = current?.billingCycle ?? 'MONTHLY';
     final nextBillingController = TextEditingController(text: current?.nextBillingDate ?? '');
     final notesController = TextEditingController(text: current?.notes ?? '');
@@ -1524,8 +1528,8 @@ class _TenantDetailScreenState extends State<TenantDetailScreen> {
                 DropdownButtonFormField<String>(
                   value: status,
                   decoration: const InputDecoration(labelText: 'Subscription Status'),
-                  items: ['TRIAL', 'ACTIVE', 'PAST_DUE', 'SUSPENDED', 'CANCELLED'].map((value) => DropdownMenuItem(value: value, child: Text(value))).toList(),
-                  onChanged: isSaving ? null : (value) => setDialogState(() => status = value ?? 'ACTIVE'),
+                  items: (operator ? ['INTERNAL'] : ['TRIAL', 'ACTIVE', 'PAST_DUE', 'SUSPENDED', 'CANCELLED']).map((value) => DropdownMenuItem(value: value, child: Text(value))).toList(),
+                  onChanged: isSaving || operator ? null : (value) => setDialogState(() => status = value ?? 'ACTIVE'),
                 ),
                 const SizedBox(height: 12),
                 DropdownButtonFormField<String>(

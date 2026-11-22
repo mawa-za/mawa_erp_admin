@@ -85,25 +85,24 @@ class AppConfig {
     }
   }
 
-  static String get platformOperatorTenantHost {
-    const fromEnv = String.fromEnvironment(
-      'PLATFORM_OPERATOR_TENANT_HOST',
-      defaultValue: '',
-    );
-    if (fromEnv.isNotEmpty) return fromEnv;
-
-    switch (environment) {
+  static String platformOperatorTenantHostFor(Environment target) {
+    switch (target) {
       case Environment.dev:
-        return 'web.dev.app.mawa.co.za';
+        return 'web-dev.app.mawa.co.za';
       case Environment.alpha:
-        return 'web.alpha.app.mawa.co.za';
+        return 'web-alpha.app.mawa.co.za';
       case Environment.beta:
-        return 'web.beta.app.mawa.co.za';
+        return 'web-beta.app.mawa.co.za';
       case Environment.hotfix:
         return 'web-hotfix.app.mawa.co.za';
       case Environment.prod:
         return 'web.app.mawa.co.za';
     }
+  }
+
+  static String get platformOperatorTenantHost {
+    const fromEnv = String.fromEnvironment('PLATFORM_OPERATOR_TENANT_HOST', defaultValue: '');
+    return fromEnv.isNotEmpty ? fromEnv : platformOperatorTenantHostFor(environment);
   }
 
   static String get platformOperatorTenantUrl {
