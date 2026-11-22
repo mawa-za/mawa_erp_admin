@@ -78,6 +78,30 @@ class _BillingManagementScreenState extends State<BillingManagementScreen> {
   void _refreshDashboard() => setState(() => _dashboardFuture = _billing.dashboard());
   void _refreshModules() => setState(() => _modulesFuture = _billing.modules());
   void _refreshPlans() => setState(() => _plansFuture = _billing.plans());
+  bool _syncingOperatorRevenue = false;
+
+  Future<void> _syncOperatorRevenue() async {
+    setState(() => _syncingOperatorRevenue = true);
+    try {
+      final result = await _billing.syncOperatorRevenue();
+      if (!mounted) return;
+      final failed = result['failed'] ?? 0;
+      final updated = result['updated'] ?? 0;
+      final unchanged = result['unchanged'] ?? 0;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text('Operator revenue sync: $updated updated, $unchanged unchanged, $failed failed. '
+          'Review operator ledger before posting to ERP.'),
+      ));
+      _refreshInvoices();
+    } catch (error) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Operator revenue sync failed: $error')),
+      );
+    } finally {
+      if (mounted) setState(() => _syncingOperatorRevenue = false);
+    }
+  }
+
   void _refreshInvoices() => setState(() => _invoicesFuture = _billing.invoices(tenantId: _selectedTenantId));
   void _refreshAdjustments() => setState(() => _adjustmentsFuture = _billing.adjustments(tenantId: _selectedTenantId));
   void _refreshTaxRates() => setState(() => _taxRatesFuture = _billing.taxRates());
@@ -542,6 +566,14 @@ class _BillingManagementScreenState extends State<BillingManagementScreen> {
           child: Row(
             children: [
               Expanded(child: _compactTenantSelector()),
+              const SizedBox(width: 12),
+              OutlinedButton.icon(
+                onPressed: _syncingOperatorRevenue ? null : _syncOperatorRevenue,
+                icon: _syncingOperatorRevenue
+                    ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
+                    : const Icon(Icons.sync),
+                label: const Text('Sync operator revenue'),
+              ),
               const SizedBox(width: 12),
               FilledButton.icon(
                 onPressed: _selectedTenantId == null ? null : _showGenerateInvoiceDialog,
