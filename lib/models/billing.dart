@@ -7,6 +7,8 @@ class BillingDashboardSummary {
   final double openInvoiceAmount;
   final int storageBytes;
   final int usageEvents;
+  final String storageMeteringStatus;
+  final String? storageLastReconciledAt;
 
   const BillingDashboardSummary({
     required this.activeModules,
@@ -17,6 +19,8 @@ class BillingDashboardSummary {
     required this.openInvoiceAmount,
     required this.storageBytes,
     required this.usageEvents,
+    required this.storageMeteringStatus,
+    this.storageLastReconciledAt,
   });
 
   factory BillingDashboardSummary.fromJson(Map<String, dynamic> json) => BillingDashboardSummary(
@@ -28,6 +32,8 @@ class BillingDashboardSummary {
         openInvoiceAmount: _asDouble(json['openInvoiceAmount']),
         storageBytes: _asInt(json['storageBytes']),
         usageEvents: _asInt(json['usageEvents']),
+        storageMeteringStatus: json['storageMeteringStatus']?.toString() ?? 'NOT_METERED',
+        storageLastReconciledAt: json['storageLastReconciledAt']?.toString(),
       );
 }
 
@@ -52,6 +58,39 @@ class BillingModule {
         'description': description,
         'active': active,
       };
+}
+
+class BillingBundle {
+  final String code;
+  final String name;
+  final String? description;
+  final bool active;
+  final List<String> moduleCodes;
+  const BillingBundle({required this.code, required this.name, this.description,
+    required this.active, required this.moduleCodes});
+  factory BillingBundle.fromJson(Map<String, dynamic> json) => BillingBundle(
+    code: json['code']?.toString() ?? '', name: json['name']?.toString() ?? '',
+    description: json['description']?.toString(),
+    active: _asBool(json['active'], fallback: true),
+    moduleCodes: (json['moduleCodes'] as List<dynamic>? ?? const []).map((e)=>e.toString()).toList());
+  Map<String,dynamic> toJson() => {'code':code,'name':name,'description':description,
+    'active':active,'moduleCodes':moduleCodes};
+}
+
+class BillingPlanBundle {
+  final String bundleCode;
+  final String? bundleName;
+  final double monthlyAmount;
+  final double annualAmount;
+  final bool active;
+  const BillingPlanBundle({required this.bundleCode,this.bundleName,required this.monthlyAmount,
+    required this.annualAmount,required this.active});
+  factory BillingPlanBundle.fromJson(Map<String,dynamic> json) => BillingPlanBundle(
+    bundleCode: json['bundleCode']?.toString() ?? '', bundleName:json['bundleName']?.toString(),
+    monthlyAmount:_asDouble(json['monthlyAmount']), annualAmount:_asDouble(json['annualAmount']),
+    active:_asBool(json['active'],fallback:true));
+  Map<String,dynamic> toJson() => {'bundleCode':bundleCode,'monthlyAmount':monthlyAmount,
+    'annualAmount':annualAmount,'active':active};
 }
 
 class BillingPlanModule {
@@ -100,6 +139,21 @@ class BillingPlanModule {
       };
 }
 
+class BillingPlanMeter {
+  final String meterCode;
+  final double includedQuantity;
+  final double unitAmount;
+  final bool active;
+  const BillingPlanMeter({required this.meterCode,required this.includedQuantity,
+    required this.unitAmount,required this.active});
+  factory BillingPlanMeter.fromJson(Map<String,dynamic> json)=>BillingPlanMeter(
+    meterCode:json['meterCode']?.toString() ?? '',
+    includedQuantity:_asDouble(json['includedQuantity']),unitAmount:_asDouble(json['unitAmount']),
+    active:_asBool(json['active'],fallback:true));
+  Map<String,dynamic> toJson()=>{'meterCode':meterCode,'includedQuantity':includedQuantity,
+    'unitAmount':unitAmount,'active':active};
+}
+
 class BillingPlan {
   final int? id;
   final String code;
@@ -115,6 +169,8 @@ class BillingPlan {
   final int? maxDevices;
   final int displayOrder;
   final List<BillingPlanModule> modules;
+  final List<BillingPlanBundle> bundles;
+  final List<BillingPlanMeter> meters;
 
   const BillingPlan({
     this.id,
@@ -131,6 +187,8 @@ class BillingPlan {
     this.maxDevices,
     this.displayOrder = 0,
     required this.modules,
+    this.bundles = const [],
+    this.meters = const [],
   });
 
   factory BillingPlan.fromJson(Map<String, dynamic> json) => BillingPlan(
@@ -150,6 +208,10 @@ class BillingPlan {
         modules: (json['modules'] as List<dynamic>? ?? const [])
             .map((item) => BillingPlanModule.fromJson(Map<String, dynamic>.from(item as Map)))
             .toList(),
+        bundles: (json['bundles'] as List<dynamic>? ?? const [])
+            .map((item)=>BillingPlanBundle.fromJson(Map<String,dynamic>.from(item as Map))).toList(),
+        meters: (json['meters'] as List<dynamic>? ?? const [])
+            .map((item)=>BillingPlanMeter.fromJson(Map<String,dynamic>.from(item as Map))).toList(),
       );
 
   Map<String, dynamic> toJson() => {
@@ -166,6 +228,8 @@ class BillingPlan {
         'maxDevices': maxDevices,
         'displayOrder': displayOrder,
         'modules': modules.map((item) => item.toJson()).toList(),
+        'bundles': bundles.map((item)=>item.toJson()).toList(),
+        'meters': meters.map((item)=>item.toJson()).toList(),
       };
 }
 
@@ -279,14 +343,19 @@ class BillingStorageSummary {
   final int bytes;
   final double gigabytes;
   final int objectCount;
+  final String meteringStatus;
+  final String? lastReconciledAt;
 
-  const BillingStorageSummary({required this.tenantId, required this.bytes, required this.gigabytes, required this.objectCount});
+  const BillingStorageSummary({required this.tenantId, required this.bytes, required this.gigabytes, required this.objectCount,
+    required this.meteringStatus, this.lastReconciledAt});
 
   factory BillingStorageSummary.fromJson(Map<String, dynamic> json) => BillingStorageSummary(
         tenantId: json['tenantId']?.toString() ?? '',
         bytes: _asInt(json['bytes']),
         gigabytes: _asDouble(json['gigabytes']),
         objectCount: _asInt(json['objectCount']),
+        meteringStatus: json['meteringStatus']?.toString() ?? 'NOT_METERED',
+        lastReconciledAt:json['lastReconciledAt']?.toString(),
       );
 }
 
@@ -347,6 +416,10 @@ class BillingInvoice {
   final String? paidAt;
   final String? createdBy;
   final List<BillingInvoiceLine> lines;
+  final String billToTenantId;
+  final String? resellerTenantId;
+  final String billingResponsibility;
+  final double? wholesaleRatePercent;
 
   const BillingInvoice({
     required this.id,
@@ -366,6 +439,10 @@ class BillingInvoice {
     this.paidAt,
     this.createdBy,
     required this.lines,
+    required this.billToTenantId,
+    this.resellerTenantId,
+    required this.billingResponsibility,
+    this.wholesaleRatePercent,
   });
 
   factory BillingInvoice.fromJson(Map<String, dynamic> json) => BillingInvoice(
@@ -388,6 +465,10 @@ class BillingInvoice {
         lines: (json['lines'] as List<dynamic>? ?? const [])
             .map((item) => BillingInvoiceLine.fromJson(Map<String, dynamic>.from(item as Map)))
             .toList(),
+        billToTenantId:json['billToTenantId']?.toString() ?? json['tenantId']?.toString() ?? '',
+        resellerTenantId:json['resellerTenantId']?.toString(),
+        billingResponsibility:json['billingResponsibility']?.toString() ?? 'MAWA_TO_TENANT',
+        wholesaleRatePercent:_asNullableDouble(json['wholesaleRatePercent']),
       );
 }
 
