@@ -20,6 +20,9 @@ class _BillingManagementScreenState extends State<BillingManagementScreen> {
   late Future<BillingDashboardSummary> _dashboardFuture;
   late Future<List<BillingModule>> _modulesFuture;
   late Future<List<BillingPlan>> _plansFuture;
+  late Future<List<BillingBundle>> _bundlesFuture;
+  Future<Map<String,dynamic>?>? _commercialTermsFuture;
+  bool _reconcilingStorage = false;
   late Future<List<Tenant>> _tenantsFuture;
   late Future<List<BillingInvoice>> _invoicesFuture;
   late Future<List<BillingAdjustment>> _adjustmentsFuture;
@@ -40,6 +43,7 @@ class _BillingManagementScreenState extends State<BillingManagementScreen> {
   void _reloadAll() {
     _dashboardFuture = _billing.dashboard();
     _modulesFuture = _billing.modules();
+    _bundlesFuture = _billing.bundles();
     _plansFuture = _billing.plans();
     _tenantsFuture = _tenantsService.getTenants();
     _invoicesFuture = _billing.invoices(tenantId: _selectedTenantId);
@@ -48,6 +52,7 @@ class _BillingManagementScreenState extends State<BillingManagementScreen> {
     _auditFuture = _billing.audit(tenantId: _selectedTenantId);
     if (_selectedTenantId != null) {
       _tenantSummaryFuture = _billing.tenantSummary(_selectedTenantId!);
+      _commercialTermsFuture = _billing.commercialTerms(_selectedTenantId!);
     }
     _tenantsFuture.then((items) {
       if (!mounted) return;
@@ -56,6 +61,7 @@ class _BillingManagementScreenState extends State<BillingManagementScreen> {
         if (_selectedTenantId == null && items.isNotEmpty) {
           _selectedTenantId = items.first.id;
           _tenantSummaryFuture = _billing.tenantSummary(_selectedTenantId!);
+          _commercialTermsFuture = _billing.commercialTerms(_selectedTenantId!);
           _invoicesFuture = _billing.invoices(tenantId: _selectedTenantId);
           _adjustmentsFuture = _billing.adjustments(tenantId: _selectedTenantId);
           _auditFuture = _billing.audit(tenantId: _selectedTenantId);
@@ -69,6 +75,7 @@ class _BillingManagementScreenState extends State<BillingManagementScreen> {
     setState(() {
       _selectedTenantId = tenantId;
       _tenantSummaryFuture = _billing.tenantSummary(tenantId);
+      _commercialTermsFuture = _billing.commercialTerms(tenantId);
       _invoicesFuture = _billing.invoices(tenantId: tenantId);
       _adjustmentsFuture = _billing.adjustments(tenantId: tenantId);
       _auditFuture = _billing.audit(tenantId: tenantId);
@@ -76,7 +83,10 @@ class _BillingManagementScreenState extends State<BillingManagementScreen> {
   }
 
   void _refreshDashboard() => setState(() => _dashboardFuture = _billing.dashboard());
-  void _refreshModules() => setState(() => _modulesFuture = _billing.modules());
+  void _refreshModules() => setState(() {
+    _modulesFuture = _billing.modules();
+    _bundlesFuture = _billing.bundles();
+  });
   void _refreshPlans() => setState(() => _plansFuture = _billing.plans());
   bool _syncingOperatorRevenue = false;
 
@@ -108,7 +118,10 @@ class _BillingManagementScreenState extends State<BillingManagementScreen> {
   void _refreshAudit() => setState(() => _auditFuture = _billing.audit(tenantId: _selectedTenantId));
   void _refreshTenant() {
     if (_selectedTenantId == null) return;
-    setState(() => _tenantSummaryFuture = _billing.tenantSummary(_selectedTenantId!));
+    setState(() {
+      _tenantSummaryFuture = _billing.tenantSummary(_selectedTenantId!);
+      _commercialTermsFuture = _billing.commercialTerms(_selectedTenantId!);
+    });
   }
 
   @override
@@ -180,11 +193,20 @@ class _BillingManagementScreenState extends State<BillingManagementScreen> {
                   _metricCard('Trials', '${summary.trialSubscriptions}', Icons.hourglass_bottom_rounded),
                   _metricCard('Open Invoices', '${summary.openInvoices}', Icons.receipt_long_outlined),
                   _metricCard('Outstanding', _money(summary.openInvoiceAmount), Icons.account_balance_wallet_outlined),
-                  _metricCard('Storage', _storage(summary.storageBytes), Icons.cloud_outlined),
+                  _metricCard('GCS Storage', summary.storageMeteringStatus == 'RECONCILED'
+                      ? _storage(summary.storageBytes) : 'Not metered', Icons.cloud_outlined),
                 ],
               );
             },
           ),
+          const SizedBox(height: 12),
+          Card(child: Padding(padding:const EdgeInsets.all(16),child:Wrap(
+            spacing:12,runSpacing:8,crossAxisAlignment:WrapCrossAlignment.center,children:[
+              const Text('GCS inventory: reconcile configured buckets to measure tenant storage. Storage overages stay disabled until metering is complete.'),
+              OutlinedButton.icon(onPressed:_reconcilingStorage ? null : _reconcileStorage,
+                icon:_reconcilingStorage ? const SizedBox(width:16,height:16,child:CircularProgressIndicator(strokeWidth:2)) :
+                  const Icon(Icons.cloud_sync_outlined), label:const Text('Reconcile GCS now')),
+            ],))),
           const SizedBox(height: 24),
           _tenantSelector(),
           const SizedBox(height: 16),
@@ -340,6 +362,10 @@ class _BillingManagementScreenState extends State<BillingManagementScreen> {
           ),
         ),
         const SizedBox(height: 12),
+        _commercialTermsCard(),
+        Text('GCS reconciliation: ${summary.storage.meteringStatus} • last successful scan: ${summary.storage.lastReconciledAt ?? 'Not available'}',
+          style:const TextStyle(color: Colors.grey)),
+        const SizedBox(height: 12),
         Wrap(
           spacing: 12,
           runSpacing: 12,
@@ -347,8 +373,10 @@ class _BillingManagementScreenState extends State<BillingManagementScreen> {
             _metricCard('Invoices', '${summary.invoiceCount}', Icons.receipt_outlined),
             _metricCard('Open', '${summary.openInvoiceCount}', Icons.pending_actions_outlined),
             _metricCard('Outstanding', _money(summary.outstandingAmount), Icons.account_balance_wallet_outlined),
-            _metricCard('Storage', '${summary.storage.gigabytes.toStringAsFixed(3)} GB', Icons.cloud_outlined),
-            _metricCard('Stored Objects', '${summary.storage.objectCount}', Icons.attach_file_rounded),
+            _metricCard('GCS Storage', summary.storage.meteringStatus == 'RECONCILED'
+                ? '${summary.storage.gigabytes.toStringAsFixed(3)} GiB' : 'Not metered', Icons.cloud_outlined),
+            _metricCard('Stored Objects', summary.storage.meteringStatus == 'RECONCILED'
+                ? '${summary.storage.objectCount}' : 'Unknown', Icons.attach_file_rounded),
           ],
         ),
         const SizedBox(height: 12),
@@ -450,9 +478,10 @@ class _BillingManagementScreenState extends State<BillingManagementScreen> {
             },
             child: ListView.builder(
               padding: const EdgeInsets.all(20),
-              itemCount: modules.length,
+              itemCount: modules.length + 1,
               itemBuilder: (context, index) {
-                final module = modules[index];
+                if(index == 0) return _bundleCatalogueCard();
+                final module = modules[index-1];
                 return Card(
                   child: ListTile(
                     leading: Icon(module.active ? Icons.check_circle_rounded : Icons.block_rounded,
@@ -538,9 +567,14 @@ class _BillingManagementScreenState extends State<BillingManagementScreen> {
                 _detail('Users', plan.maxUsers?.toString() ?? 'Unlimited'),
                 _detail('Branches', plan.maxBranches?.toString() ?? 'Unlimited'),
                 _detail('Devices', plan.maxDevices?.toString() ?? 'Unlimited'),
-                _detail('Modules', '${plan.modules.where((item) => item.active).length}'),
+                _detail('Standalone Modules', '${plan.modules.where((item) => item.active).length}'),
+                _detail('Bundles', '${plan.bundles.where((item)=>item.active).length}'),
+                _detail('Meters', '${plan.meters.where((item)=>item.active).length}'),
               ],
             ),
+            if(plan.bundles.isNotEmpty) Wrap(spacing:8,runSpacing:8,children:
+              plan.bundles.where((b)=>b.active).map((b)=>Chip(label:Text(
+                '${b.bundleName ?? b.bundleCode} • ${_money(b.monthlyAmount)}/month'))).toList()),
             if (plan.modules.isNotEmpty) ...[
               const Divider(height: 24),
               Wrap(
@@ -614,7 +648,8 @@ class _BillingManagementScreenState extends State<BillingManagementScreen> {
       child: ExpansionTile(
         leading: Icon(_invoiceIcon(invoice.status)),
         title: Text(invoice.invoiceNumber, style: const TextStyle(fontWeight: FontWeight.bold)),
-        subtitle: Text('${invoice.periodStart} to ${invoice.periodEnd} • ${invoice.tenantId}'),
+        subtitle: Text('${invoice.periodStart} to ${invoice.periodEnd} • Customer: ${invoice.tenantId}'
+          '${invoice.billToTenantId == invoice.tenantId ? '' : ' • Bill to reseller: ${invoice.billToTenantId}'}'),
         trailing: Wrap(
           spacing: 8,
           crossAxisAlignment: WrapCrossAlignment.center,
@@ -799,6 +834,119 @@ class _BillingManagementScreenState extends State<BillingManagementScreen> {
     );
   }
 
+  Widget _bundleCatalogueCard() {
+    return FutureBuilder<List<BillingBundle>>(future:_bundlesFuture,builder:(context,snapshot){
+      if(snapshot.hasError) return Text('Bundle catalogue unavailable: ${snapshot.error}');
+      final list=snapshot.data ?? const <BillingBundle>[];
+      return Card(child:Padding(padding:const EdgeInsets.all(16),child:Column(
+        crossAxisAlignment:CrossAxisAlignment.start,children:[
+          Row(children:[const Expanded(child:Text('Commercial Bundles',style:TextStyle(fontSize:18,fontWeight:FontWeight.bold))),
+            OutlinedButton.icon(onPressed:()=>_showBundleDialog(null), icon:const Icon(Icons.add),label:const Text('Bundle'))]),
+          const Text('These are billable collections, distinct from workcenter/industry groups.'),
+          ...list.map((b)=>ListTile(title:Text(b.name),subtitle:Text('${b.code} • ${b.moduleCodes.join(', ')}'),
+             trailing:IconButton(icon:const Icon(Icons.edit),onPressed:()=>_showBundleDialog(b))))
+        ]))));
+    });
+  }
+
+  Future<void> _showBundleDialog(BillingBundle? bundle) async {
+    final modules=await _billing.modules();
+    if(!mounted)return;
+    final code=TextEditingController(text:bundle?.code ?? '');
+    final name=TextEditingController(text:bundle?.name ?? '');
+    final description=TextEditingController(text:bundle?.description ?? '');
+    final selected=<String>{...(bundle?.moduleCodes ?? const <String>[])};
+    bool saving=false,active=bundle?.active ?? true;
+    await showDialog<void>(context:context,builder:(ctx)=>StatefulBuilder(builder:(ctx,setLocal)=>AlertDialog(
+      title:Text(bundle==null?'New Commercial Bundle':'Edit Commercial Bundle'),
+      content:SizedBox(width:650,height:500,child:ListView(children:[
+        TextField(controller:code,enabled:bundle==null,decoration:const InputDecoration(labelText:'Code')),
+        TextField(controller:name,decoration:const InputDecoration(labelText:'Name')),
+        TextField(controller:description,decoration:const InputDecoration(labelText:'Description')),
+        SwitchListTile(title:const Text('Active'),value:active,onChanged:(v)=>setLocal(()=>active=v)),
+        const Divider(),const Text('Included functional modules (entitlements)'),
+        ...modules.map((m)=>CheckboxListTile(title:Text(m.name),subtitle:Text(m.code),
+          value:selected.contains(m.code),onChanged:(v)=>setLocal(()=>v==true?selected.add(m.code):selected.remove(m.code))))
+      ])),actions:[
+        TextButton(onPressed:saving?null:()=>Navigator.pop(ctx),child:const Text('Cancel')),
+        FilledButton(onPressed:saving?null:()async{
+          if(code.text.trim().isEmpty || name.text.trim().isEmpty || selected.isEmpty)return;
+          setLocal(()=>saving=true);
+          try{
+            await _billing.saveBundle(BillingBundle(code:code.text.trim().toUpperCase(),name:name.text.trim(),
+              description:description.text.trim(),active:active,moduleCodes:selected.toList()),create:bundle==null);
+            if(!mounted)return;
+            Navigator.pop(ctx);_refreshModules();_refreshPlans();
+          } catch(e){_showError(e);setLocal(()=>saving=false);}
+        },child:Text(saving?'Saving...':'Save Bundle'))
+      ]))));
+  }
+
+  Future<void> _reconcileStorage() async {
+    final confirmed=await showDialog<bool>(context:context,builder:(ctx)=>AlertDialog(
+      title:const Text('Reconcile GCS inventory?'),
+      content:const Text('This scans configured GCS buckets and updates tenant storage measurements. It does not enable storage overage charges.'),
+      actions:[TextButton(onPressed:()=>Navigator.pop(ctx,false),child:const Text('Cancel')),
+        FilledButton(onPressed:()=>Navigator.pop(ctx,true),child:const Text('Run'))]));
+    if(confirmed!=true || !mounted)return;
+    setState(()=>_reconcilingStorage=true);
+    try {
+      final run=await _billing.reconcileStorage();
+      if(!mounted)return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content:Text(
+        'GCS inventory ${run['status']}: ${run['objectCount']} objects, ${run['sizeBytes']} bytes.')));
+      _refreshDashboard();_refreshTenant();
+    }catch(e){_showError(e);}finally{if(mounted)setState(()=>_reconcilingStorage=false);}
+  }
+
+  Widget _commercialTermsCard() {
+    final tenant=_selectedTenantId;
+    if(tenant==null || _commercialTermsFuture==null)return const SizedBox.shrink();
+    return Card(child:Padding(padding:const EdgeInsets.all(16),child:FutureBuilder<Map<String,dynamic>?>(
+      future:_commercialTermsFuture,builder:(context,snapshot){
+        if(snapshot.hasError)return Text('Reseller billing terms unavailable: ${snapshot.error}');
+        final terms=snapshot.data;
+        final mode=terms?['billingResponsibility']?.toString() ?? 'MAWA_TO_TENANT';
+        final reseller=terms?['resellerTenantId']?.toString();
+        return Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
+          Row(children:[const Expanded(child:Text('Reseller Billing',style:TextStyle(fontWeight:FontWeight.bold,fontSize:17))),
+            TextButton.icon(onPressed:()=>_showWholesaleDialog(terms),icon:const Icon(Icons.edit),label:const Text('Set wholesale terms'))]),
+          Text('Mode: $mode • Reseller: ${reseller ?? 'None'}'),
+          Text('Wholesale rate: ${terms?['wholesaleRatePercent'] ?? 'Not configured'} % of MAWA catalogue'),
+          FutureBuilder<Map<String,dynamic>>(future:_billing.resellerAssignment(tenant),builder:(ctx,assignmentSnapshot){
+            final source=assignmentSnapshot.data;
+            if(assignmentSnapshot.hasError) return Text('Reseller assignment lookup failed: ${assignmentSnapshot.error}');
+            if(source==null)return const Text('Loading reseller assignment...');
+            return Text('Authoritative assignment: ${source['billingResponsibility'] ?? 'MAWA_TO_TENANT'} • ${source['resellerTenantId'] ?? 'Direct MAWA customer'}');
+          }),
+          const Text('Payer is validated from the active primary reseller assignment when generating invoices. SHARED mode is not yet supported.',
+            style:TextStyle(color:Colors.grey))
+        ]);
+      })));
+  }
+
+  Future<void> _showWholesaleDialog(Map<String,dynamic>? terms) async {
+    final tenant=_selectedTenantId;
+    if(tenant==null)return;
+    final value=TextEditingController(text:terms?['wholesaleRatePercent']?.toString() ?? '');
+    final confirmed=await showDialog<bool>(context:context,builder:(ctx)=>AlertDialog(
+      title:const Text('Reseller wholesale rate'),
+      content:Column(mainAxisSize:MainAxisSize.min,children:[
+        const Text('Percentage of MAWA list-price charges invoiced to the reseller. Requires an active reseller assignment; set 100 for no discount.'),
+        TextField(controller:value,keyboardType:TextInputType.number,
+          decoration:const InputDecoration(labelText:'Wholesale rate (0 to 100%)')),
+      ]),actions:[TextButton(onPressed:()=>Navigator.pop(ctx,false),child:const Text('Cancel')),
+        FilledButton(onPressed:()=>Navigator.pop(ctx,true),child:const Text('Save'))]));
+    final rate=double.tryParse(value.text.trim());
+    if(confirmed!=true || rate==null || rate<0 || rate>100)return;
+    try{
+      await _billing.saveWholesaleRate(tenant,rate);
+      if(!mounted)return;
+      setState(()=>_commercialTermsFuture=_billing.commercialTerms(tenant));
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content:Text('Wholesale terms saved.')));
+    }catch(e){_showError(e);}
+  }
+
   Future<void> _showModuleDialog(BillingModule? module) async {
     final code = TextEditingController(text: module?.code ?? '');
     final name = TextEditingController(text: module?.name ?? '');
@@ -857,7 +1005,9 @@ class _BillingManagementScreenState extends State<BillingManagementScreen> {
   Future<void> _showPlanDialog(BillingPlan? plan) async {
     List<BillingModule> modules;
     List<BillingTaxRate> taxRates;
+    List<BillingBundle> bundles;
     try {
+      bundles = await _billing.bundles();
       modules = await _billing.modules();
       taxRates = await _billing.taxRates();
     } catch (error) {
@@ -878,6 +1028,12 @@ class _BillingManagementScreenState extends State<BillingManagementScreen> {
     String taxCode = plan?.taxCode ?? (taxRates.isEmpty ? 'ZA_VAT' : taxRates.first.code);
     final existing = {for (final item in plan?.modules ?? const <BillingPlanModule>[]) item.moduleCode: item};
     final editors = modules.map((module) => _PlanModuleEditor(module, existing[module.code])).toList();
+    final bundleExisting = {for(final item in plan?.bundles ?? const <BillingPlanBundle>[]) item.bundleCode:item};
+    final bundleEditors = bundles.map((bundle)=>_PlanBundleEditor(bundle,bundleExisting[bundle.code])).toList();
+    final storageMeter=plan?.meters.where((m)=>m.meterCode=='STORAGE_GB_MONTH').firstOrNull;
+    bool chargeStorage=storageMeter?.active ?? false;
+    final storageIncluded=TextEditingController(text:storageMeter?.includedQuantity.toString() ?? '0');
+    final storageRate=TextEditingController(text:storageMeter?.unitAmount.toString() ?? '0');
     bool saving = false;
 
     await showDialog<void>(
@@ -936,9 +1092,34 @@ class _BillingManagementScreenState extends State<BillingManagementScreen> {
                   ),
                 ]),
                 const SizedBox(height: 20),
-                const Text('Included Modules and Pricing', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                const Text('Commercial Bundles (not ERP workcenter groups)',
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                const Text('Choose bundles or standalone modules. Overlapping modules across bundles are not allowed.'),
+                ...bundleEditors.map((e)=>Card(child:Padding(padding:const EdgeInsets.all(8),child:Column(children:[
+                  CheckboxListTile(title:Text(e.bundle.name),subtitle:Text(e.bundle.moduleCodes.join(', ')),
+                    value:e.enabled,onChanged:(v)=>setDialogState(()=>e.enabled=v??false)),
+                  if(e.enabled) Row(children:[
+                    Expanded(child:TextField(controller:e.monthly,decoration:const InputDecoration(labelText:'Bundle monthly R'))),
+                    const SizedBox(width:12),
+                    Expanded(child:TextField(controller:e.annual,decoration:const InputDecoration(labelText:'Bundle annual R'))),
+                  ])
+                ])))),
+                const SizedBox(height:16),
+                const Text('Standalone Modules and Pricing', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
                 const SizedBox(height: 8),
                 ...editors.map((editor) => _planModuleEditor(editor, setDialogState)),
+                const Divider(),
+                const Text('Plan-level Usage (not tied to a bundle or module)',style:TextStyle(fontWeight:FontWeight.bold)),
+                SwitchListTile(title:const Text('Charge GCS storage overage'),
+                  subtitle:const Text('Unit: GiB-month, charged only after daily usage is reconciled and global metering enabled.'),
+                  value:chargeStorage,onChanged:(v)=>setDialogState(()=>chargeStorage=v)),
+                if(chargeStorage) Row(children:[
+                  Expanded(child:TextField(controller:storageIncluded,keyboardType:TextInputType.number,
+                    decoration:const InputDecoration(labelText:'Included GiB-month'))),
+                  const SizedBox(width:12),
+                  Expanded(child:TextField(controller:storageRate,keyboardType:TextInputType.number,
+                    decoration:const InputDecoration(labelText:'R per additional GiB-month'))),
+                ]),
               ],
             ),
           ),
@@ -964,6 +1145,16 @@ class _BillingManagementScreenState extends State<BillingManagementScreen> {
                           maxBranches: int.tryParse(maxBranches.text.trim()),
                           maxDevices: int.tryParse(maxDevices.text.trim()),
                           displayOrder: int.tryParse(displayOrder.text.trim()) ?? 0,
+                          bundles:bundleEditors.where((e)=>e.enabled).map((e)=>BillingPlanBundle(
+                            bundleCode:e.bundle.code, bundleName:e.bundle.name,
+                            monthlyAmount:double.tryParse(e.monthly.text) ?? 0,
+                            annualAmount:double.tryParse(e.annual.text) ?? 0,active:true)).toList(),
+                          meters:[
+                            ...(plan?.meters.where((m)=>m.meterCode!='STORAGE_GB_MONTH') ?? const <BillingPlanMeter>[]),
+                            if(chargeStorage) BillingPlanMeter(meterCode:'STORAGE_GB_MONTH',
+                              includedQuantity:double.tryParse(storageIncluded.text) ?? 0,
+                              unitAmount:double.tryParse(storageRate.text) ?? 0,active:true),
+                          ],
                           modules: editors
                               .where((editor) => editor.enabled)
                               .map((editor) => BillingPlanModule(
@@ -978,6 +1169,15 @@ class _BillingManagementScreenState extends State<BillingManagementScreen> {
                                   ))
                               .toList(),
                         );
+                        final covered=<String>{};
+                        for(final b in bundleEditors.where((e)=>e.enabled)) {
+                          for(final code in b.bundle.moduleCodes) {
+                            if(!covered.add(code)) throw StateError('Overlapping bundles include $code');
+                          }
+                        }
+                        for(final m in editors.where((e)=>e.enabled)) {
+                          if(covered.contains(m.module.code)) throw StateError('Module ${m.module.code} is already included in a bundle');
+                        }
                         await _billing.savePlan(savedPlan, create: plan == null);
                         if (!mounted) return;
                         Navigator.pop(dialogContext);
@@ -1475,6 +1675,17 @@ class _BillingManagementScreenState extends State<BillingManagementScreen> {
 
   DateTime? _parseDate(String? value) => value == null || value.isEmpty ? null : DateTime.tryParse(value);
   String _date(DateTime value) => '${value.year.toString().padLeft(4, '0')}-${value.month.toString().padLeft(2, '0')}-${value.day.toString().padLeft(2, '0')}';
+}
+
+class _PlanBundleEditor {
+  final BillingBundle bundle;
+  bool enabled;
+  final TextEditingController monthly;
+  final TextEditingController annual;
+  _PlanBundleEditor(this.bundle,BillingPlanBundle? existing):
+    enabled=existing?.active ?? false,
+    monthly=TextEditingController(text:existing?.monthlyAmount.toStringAsFixed(2) ?? '0.00'),
+    annual=TextEditingController(text:existing?.annualAmount.toStringAsFixed(2) ?? '0.00');
 }
 
 class _PlanModuleEditor {
