@@ -52,6 +52,54 @@ class BillingService {
     return BillingModule.fromJson(_map(response.body));
   }
 
+  Future<List<BillingBundle>> bundles() async {
+    final response=await _http.get(Uri.parse('${AppConfig.apiBaseUrl}/billing/bundles'));
+    _ensureSuccess(response.statusCode,response.body);
+    return _list(response.body).map(BillingBundle.fromJson).toList();
+  }
+
+  Future<BillingBundle> saveBundle(BillingBundle bundle,{bool create=false}) async {
+    final uri=create ? Uri.parse('${AppConfig.apiBaseUrl}/billing/bundles') :
+      Uri.parse('${AppConfig.apiBaseUrl}/billing/bundles/${Uri.encodeComponent(bundle.code)}');
+    final response=create ? await _http.post(uri,headers:_jsonHeaders,body:jsonEncode(bundle.toJson())) :
+      await _http.put(uri,headers:_jsonHeaders,body:jsonEncode(bundle.toJson()));
+    _ensureSuccess(response.statusCode,response.body);
+    return BillingBundle.fromJson(_map(response.body));
+  }
+
+  Future<Map<String,dynamic>> resellerAssignment(String tenantId) async {
+    final response=await _http.get(Uri.parse('${AppConfig.apiBaseUrl}/billing/tenants/$tenantId/reseller-assignment'));
+    _ensureSuccess(response.statusCode,response.body);
+    return _map(response.body);
+  }
+
+  Future<Map<String,dynamic>?> commercialTerms(String tenantId) async {
+    final response=await _http.get(Uri.parse('${AppConfig.apiBaseUrl}/billing/tenants/$tenantId/commercial-terms'));
+    _ensureSuccess(response.statusCode,response.body);
+    if(response.body.isEmpty || response.body=='null') return null;
+    return _map(response.body);
+  }
+
+  Future<Map<String,dynamic>> saveWholesaleRate(String tenantId,double rate) async {
+    final response=await _http.put(Uri.parse('${AppConfig.apiBaseUrl}/billing/tenants/$tenantId/commercial-terms'),
+      headers:_jsonHeaders,body:jsonEncode({'wholesaleRatePercent':rate}));
+    _ensureSuccess(response.statusCode,response.body);
+    return _map(response.body);
+  }
+
+  Future<Map<String,dynamic>?> storageReconciliation() async {
+    final response=await _http.get(Uri.parse('${AppConfig.apiBaseUrl}/billing/storage/reconciliation'));
+    _ensureSuccess(response.statusCode,response.body);
+    if(response.body.isEmpty || response.body=='null') return null;
+    return _map(response.body);
+  }
+
+  Future<Map<String,dynamic>> reconcileStorage() async {
+    final response=await _http.post(Uri.parse('${AppConfig.apiBaseUrl}/billing/storage/reconcile'),headers:_jsonHeaders);
+    _ensureSuccess(response.statusCode,response.body);
+    return _map(response.body);
+  }
+
   Future<List<BillingPlan>> plans() async {
     final response = await _http.get(Uri.parse('${AppConfig.apiBaseUrl}/billing/plans'));
     _ensureSuccess(response.statusCode, response.body);
