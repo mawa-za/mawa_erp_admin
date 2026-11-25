@@ -845,7 +845,7 @@ class _BillingManagementScreenState extends State<BillingManagementScreen> {
           const Text('These are billable collections, distinct from workcenter/industry groups.'),
           ...list.map((b)=>ListTile(title:Text(b.name),subtitle:Text('${b.code} • ${b.moduleCodes.join(', ')}'),
              trailing:IconButton(icon:const Icon(Icons.edit),onPressed:()=>_showBundleDialog(b))))
-        ]))));
+        ])));
     });
   }
 
@@ -879,7 +879,7 @@ class _BillingManagementScreenState extends State<BillingManagementScreen> {
             Navigator.pop(ctx);_refreshModules();_refreshPlans();
           } catch(e){_showError(e);setLocal(()=>saving=false);}
         },child:Text(saving?'Saving...':'Save Bundle'))
-      ]))));
+      ])));
   }
 
   Future<void> _reconcileStorage() async {
